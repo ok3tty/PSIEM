@@ -1,3 +1,37 @@
-Implementing and stimulating a project SIEM system allows us the opportunity to understand what the security firm aspect of an actual company goes through. The security team is tasked to handle the internal security framework and network that a company with a security policy heavily depends on when it comes to protecting confidential assets. The biggest assets that needs security protection the most iare employees/customers and so SIEM systems are the most common tools/platforms that helps the security team monitory and regulates events that could show indications of compromise in a system. There are handful of real enterprise level (as well as personal level ) SIEMS, such as Splunk Enterprise/Microsoft Sentinel for commercial level or Graylog/ELK stack/Wazuh for open-source level that are fully published and legally deployed that the avergae citizen can aquire and use. The problem rises when it comes to user management, control, understanding, and overall SIEM access which typically involves some sort of costs; say Splunk Enterprise requires user subscription for SIEM use and deployment.
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{enumitem}
+\geometry{margin=1in}
 
-There are a handful of higly recommended free-open source SIEMS out there and a typical SIEM system on average can get a bit complex to understand and so most SIEM's usually are not beginner friendly. The overal goal of this project is design, stimulate a SIEM system just like a real SIEM that can be understood and managed by the common John Doe in which it will allow them to monitor their local machine events. This will also allows us, the developers, as well as the end user to understand event monitoring in the sense of defense and security handling, meaning this will teach us what really goes on the backend of your local machine and how much data truly your system captures and what threats it is constantly trying to prevent and notify as the average Joe is typcially clueless on such matter.
+\begin{document}
+
+The implementation and simulation of a Security Information and Event Management (SIEM) system provides valuable insight into the critical security operations that enterprise organizations depend upon for protecting their digital assets. Security teams are responsible for maintaining comprehensive internal security frameworks and network infrastructures that safeguard an organization's most valuable resources: employees, customers, and confidential data. SIEM systems serve as the cornerstone technology platform that enables security teams to monitor, analyze, and respond to security events that may indicate potential system compromises.
+
+The cybersecurity landscape offers numerous enterprise-grade and personal-level SIEM solutions. Commercial platforms such as Splunk Enterprise and Microsoft Sentinel provide robust capabilities for large-scale deployments, while open-source alternatives like Graylog, the ELK Stack, and Wazuh offer accessible solutions for organizations with varying budgetary constraints. However, these solutions present significant barriers to entry for individual users and small organizations.
+
+The primary challenges with existing SIEM implementations include:
+
+\begin{itemize}
+    \item \textbf{Cost barriers}: Enterprise solutions like Splunk require expensive user subscriptions and licensing fees
+    \item \textbf{Complexity}: Most SIEM platforms feature steep learning curves that are not beginner-friendly
+    \item \textbf{Resource requirements}: Traditional SIEMs often demand substantial infrastructure investments
+    \item \textbf{User management overhead}: Complex authentication and access control mechanisms can be prohibitive for smaller deployments
+\end{itemize}
+
+While several high-quality open-source SIEM solutions exist, they typically require significant technical expertise to deploy, configure, and maintain effectively. This complexity creates a substantial knowledge gap for individual users who wish to understand and monitor security events on their local systems.
+
+\section{Project Objective}
+
+The primary objective of this project is to design and develop a Practical SIEM (PSIEM) system that addresses the accessibility challenges inherent in traditional SIEM deployments. This system will provide an intuitive, user-friendly platform that enables non-technical users to monitor security events on their local machines while maintaining the core functionality expected from enterprise-grade solutions.
+
+The PSIEM system will serve dual educational and practical purposes:
+
+\begin{enumerate}
+    \item \textbf{End-user empowerment}: Enabling individuals to gain visibility into their system's security posture and understand the continuous monitoring processes occurring on their devices
+    \item \textbf{Developer learning}: Providing hands-on experience with security event management, threat detection, and the underlying data processing pipelines that drive modern cybersecurity operations
+\end{enumerate}
+
+By creating a simplified yet functional SIEM implementation, this project aims to democratize access to security monitoring capabilities while fostering a deeper understanding of cybersecurity fundamentals among both developers and end users. The resulting system will illuminate the extensive data collection and threat prevention activities that occur continuously on computing systems, processes that remain largely invisible to the average user.
+
+\end{document}
