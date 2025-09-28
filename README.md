@@ -4,9 +4,9 @@ CSE4316 SENIOR DESIGN TEAM
 Professor: Shawn Gieser 
 Team: PSIEM 
 Team Members: 
-    -- Kevin Farokhrooz
+    -- Kevin Farokhrouz
     -- Jocelyn Bui 
     -- Muhammad Khurram 
     -- Ebenezar Belay 
-    -- Farukh Hayat 
+    -- Farrukh Hayat 
     -- Abdulmuizz Wahab
