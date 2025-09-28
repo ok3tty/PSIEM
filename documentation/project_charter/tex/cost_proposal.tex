@@ -1,7 +1,50 @@
-This section contains the approximate budget for the project, where that money will come from, and any other support. This text should be replaced with a discussion and justification of major expenses, but not the actual monetary amounts (that will go in the preliminary budget section below). 
+The Design of the overall project is a full software-based architect. Primary expenses will be delagated to cloud environment, Microsoft Azure and potentially TLS certificate/Encrypted DV certificate.
 
 \subsection{Preliminary Budget}
-Include a high level budget table for components, fabrication, software licensees, development hardware, etc. This should be in a tabular format broken up into appropriate line items. 
+
+Table~\ref{tab:budget} outlines a high-level preliminary budget for PSIEM development. 
+Most software components are open source and free to use, with primary costs 
+arising from cloud hosting, hardware for testing, and optional commercial support.
+
+\begin{table}[!htbp]
+    \centering
+    \begin{adjustbox}{width=\textwidth,center}
+        \begin{tabular}{|l|c|c|}
+        \hline
+        \textbf{Product Item} & \textbf{Estimated Cost} & \textbf{Notes} \\
+        \hline
+        Cloud Hosting (Azure) & \$100 / year & Small VM instances for development \\
+        \hline
+        Reverse Proxy + TLS Certificates & \$0 (Let's Encrypt) & Free auto-renewing certs \\
+        \hline
+        Open-Source Security Tools (Suricata, Zeek, Wazuh, MISP) & \$0 & Licensed under open source \\
+        \hline
+        Monitoring Tools (Prometheus, Grafana) & \$0 & Open source, self-hosted \\
+        \hline
+        Collaboration / Version Control (GitHub, CI/CD) & \$0 -- \$100 / year & Free tier or paid org account \\
+        \hline
+        \textbf{Total (baseline)} & \textbf{\$100-200} & Assuming open-source stack \\
+        \hline
+        \end{tabular}
+    \end{adjustbox}
+\caption{Preliminary budget estimate for PSIEM system development and deployment.}
+\label{tab:budget}
+\end{table}
 
 \subsection{Current \& Pending Support}
-What are all of the funding sources for the project, and are there any potential funding sources that haven't been secured yet? List all funding sources (including the default funding amount provided by the CSE department) and their dollar amounts.
+Table~\ref{tab:support} summarizes the current and pending funding sources 
+for the PSIEM project. Current support includes departmental contributions 
+and faculty sponsorship, while no pending support is anticipated at this time.
+
+\begin{table}[!htbp]
+    \centering
+    \begin{tabular}{|l|c|}
+        \hline
+        \textbf{Current Support} & \textbf{Pending Support} \\
+        \hline
+        CSE Department Allocation (Professor) -- \$800 & Not applicable \\
+        \hline
+    \end{tabular}
+    \caption{Current and pending funding sources for the PSIEM project.}
+    \label{tab:support}
+\end{table}
