@@ -2,10 +2,40 @@ Explain, at a high level, how you will implement a solution to the problem. Incl
 
 \usepackage{graphicx}
 
-We will design a SIEM with human readability/simple system configuration and component understanding. Only applying at most a handful of security components to give the user a simple SIEM management for easy access.
-System Overview:
-    Environment: PSIEM will live entirely and be entirely accessible through a cloud Environment with Reverse Proxy framework 
-    Core Components: With the environment set, our dashboard will be composed of React UI, Login and authenticaiton system, and AI assitant chatbox, providing the user a display mechanism for better readability, usability, and visual sense
-    Sub Components:
+The proposed solution is the development of a Practical Security Information and Event Management (PSIEM) system designed with a focus on human readability, streamlined configuration, and simple component understanding. Unlike traditional SIEMs, which can become overly complex and resource-heavy, PSIEM will prioritize a lightweight, modular structure to give users straightforward access to essential monitoring and detection capabilities without unnecessary overhead.
+
+At its core, the system will live in a cloud-hosted environment, ensuring that users can access PSIEM from multiple platforms and locations without compatibility issues. This environment will be fronted by a reverse proxy framework, which serves as the entry point for all user interactions. The reverse proxy will manage secure connections, enforce routing rules, and ensure that only the appropriate user-facing services are exposed externally, thereby protecting the more sensitive back-end services from direct access.
+
+Core Components
+
+The user experience will center around a dashboard application built to display critical security information in a clear and organized manner. This dashboard will provide:
+
+A React-based user interface that presents real-time charts, visualizations, and event summaries.
+
+A user authentication system to ensure that only authorized individuals can log in and access PSIEM.
+
+An AI assistant chatbox, which will allow users to query the system in natural language and receive simplified explanations of security events. This feature enhances accessibility for users who may not be deeply technical, enabling a broader range of team members to engage with the system.
+
+Supporting Components
+
+To enrich the dashboard experience, PSIEM will integrate several supporting services:
+
+An alerting and notification system, ensuring that important events such as anomalies or attacks are brought to the attention of administrators immediately.
+
+An event logging pipeline, responsible for ingesting and normalizing data from diverse sources. Log ingestion tools will process raw system and network data, feeding it into a structured pipeline that ensures uniformity across event formats.
+
+A data storage backend, where all collected events and logs will be indexed for efficient querying and retrieval. This centralized repository enables real-time searches as well as long-term historical analysis.
+
+Security Components
+
+To provide robust detection capabilities, PSIEM will incorporate both signature-based and anomaly-based intrusion detection systems. Signature detection, powered by tools such as Suricata, identifies threats based on known attack patterns, while anomaly detection, using tools such as Zeek, monitors deviations from expected network behavior. This dual-layered approach enhances PSIEM’s ability to identify both well-documented attacks and novel threats.
+
+Additionally, PSIEM will feature a password management system, storing sensitive user credentials in an encrypted form and protecting them with secure hashing mechanisms. This not only enhances the platform’s security posture but also integrates with the authentication component to ensure safe user access.
+
+To further extend situational awareness, PSIEM will draw on threat intelligence feeds from external sources, such as AbuseIPDB and MISP. By correlating internal events with global intelligence, PSIEM can provide contextual alerts that identify whether a suspicious IP address or domain is part of a known malicious campaign.
+
+Health and Monitoring Components
+
+Recognizing that system stability is critical, PSIEM will include health monitoring mechanisms to track its own performance and resilience. Tools such as Prometheus and Grafana will be used for real-time visibility into resource usage, ingestion rates, and service health. This monitoring layer ensures that administrators are alerted to system slowdowns, bottlenecks, or failures before they impact security visibility.
 
 \includegraphics{images/SystemDiagram}
