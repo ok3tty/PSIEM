@@ -19,7 +19,7 @@ services:
     image: docker.elastic.co/kibana/kibana:8.10.1
     container_name: psiem_kibana
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_HOSTS=http://psiem_elasticsearch:9200
       - SERVER_HOST=0.0.0.0
       - SERVER_BASEPATH=/kibana
       - SERVER_REWRITEBASEPATH=true 
