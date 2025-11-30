@@ -1,0 +1,7 @@
+logs/
+*.log
+es_data
+filebeat_data/
+node_modules/
+.env
+*.tar.gz
