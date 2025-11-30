@@ -1,1 +1,33 @@
-Add these lines:```# Logslogs/*.lognginx/logs/# Docker volumeses_data/
+# Logs
+logs/
+*.log
+*.json
+
+# Elasticsearch data
+elasticsearch/data/
+
+# Kibana data
+kibana/data/
+
+# Large files
+*.gz
+*.zip
+*.tar
+*.tar.gz
+
+# Suricata specific
+**/eve.json
+**/stats.log
+**/fast.log
+
+# Docker volumes
+volumes/
+
+# Environment files
+.env
+*.env
+
+# Temporary files
+*.tmp
+*.swp
+*~
