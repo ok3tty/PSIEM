@@ -31,3 +31,7 @@ volumes/
 *.tmp
 *.swp
 *~
+
+# Nginx logs
+nginx/logs/
+nginx/logs/*.log
