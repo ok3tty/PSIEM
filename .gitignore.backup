@@ -1,0 +1,1 @@
+```# Logslogs/*.log*.json# Elasticsearch dataelasticsearch/data/# Kibana datakibana/data/# Large files*.gz*.zip*.tar*.tar.gz# Suricata specific**/eve.json**/stats.log**/fast.log# Docker volumesvolumes/# Environment files with secrets.env*.env# Temporary files*.tmp*.swp*~
