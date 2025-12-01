@@ -11,7 +11,7 @@ const initialMessages: ChatMessage[] = [
   {
     id: '1',
     role: 'assistant',
-    content: 'Hello! I\'m your PSIEM AI Security Assistant. I can help you analyze security threats, review logs, and provide recommendations. How can I assist you today?',
+    content: 'Hello! I\'m your AEGIS AI Security Assistant. I can help you analyze security threats, review logs, and provide recommendations. How can I assist you today?',
     timestamp: new Date(),
   },
 ];
