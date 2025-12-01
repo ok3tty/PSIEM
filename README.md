@@ -414,6 +414,7 @@ This project is developed by:
 - **Abdulmuizz** - Password Manager, Intrusion Detection System, Event Logs
 - **Farrukh** - AI Assistance, Event Logs
 - **Muhammad** - UI Dashboard, AI Assistance
+- **Kevin** - UI, Login/Authentication, Password Manager/Encryption, AI Assistant
 
 ---
 
