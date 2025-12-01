@@ -12,8 +12,8 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application
-RUN npm run build
+# Fix permissions and build
+RUN chmod -R +x node_modules/.bin && npm run build
 
 # Production stage
 FROM nginx:alpine
