@@ -35,3 +35,8 @@ volumes/
 # Nginx logs
 nginx/logs/
 nginx/logs/*.log
+# SSL certificates - do not commit
+certbot/conf/
+certbot/www/
+nginx/ssl/
+

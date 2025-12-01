@@ -74,13 +74,12 @@ services:
   react-dashboard:
     build: ./dashboard
     container_name: psiem_react_dashboard
-    ports:
-      - "3000:3000"
     depends_on:
       - elasticsearch
       - logstash
     networks:
       - psiem-net
+    restart: unless-stopped
 
   keycloak:
     image: quay.io/keycloak/keycloak:21.1.1
@@ -104,14 +103,25 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/logs:/var/log/nginx
-      - ./nginx/ssl:/etc/nginx/ssl:ro 
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro 
     depends_on:
       - kibana
       - keycloak
     networks:
       - psiem-net
     restart: unless-stopped
- 
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: psiem_certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    networks:
+      - psiem-net
+
   password-manager:
     build: ./password-manager
     container_name: psiem_password_manager
