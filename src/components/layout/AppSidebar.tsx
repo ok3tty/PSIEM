@@ -64,7 +64,7 @@ export const AppSidebar = () => {
           </div>
           {!isCollapsed && (
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-foreground">PSIEM</span>
+              <span className="text-sm font-semibold text-foreground">AEGIS SIEM</span>
               <span className="text-xs text-muted-foreground">Security Dashboard</span>
             </div>
           )}
