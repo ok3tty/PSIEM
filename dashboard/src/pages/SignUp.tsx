@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Shield, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,38 +8,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-export default function Login() {
+export default function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const { signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+
+    if (password !== confirmPassword) {
+      setFormError('Passwords do not match');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await login(email, password);
+      await signUp(email, password);
       toast({
-        title: 'Login Successful',
-        description: 'Welcome to the AEGIS Security Dashboard',
+        title: 'Sign Up Successful',
+        description: 'Please check your email to confirm your account.',
       });
-      navigate('/dashboard');
+      navigate('/login');
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Please check your credentials and try again.';
+        error instanceof Error ? error.message : 'An error occurred during sign up.';
       setFormError(message);
       toast({
-        title: 'Login Failed',
+        title: 'Sign Up Failed',
         description: message,
         variant: 'destructive',
       });
@@ -65,9 +66,9 @@ export default function Login() {
             <Shield className="w-10 h-10 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-3xl font-bold">AEGIS SIEM</CardTitle>
+            <CardTitle className="text-3xl font-bold">AEGIS</CardTitle>
             <CardDescription className="mt-2">
-              Personal Security Information & Event Management
+              Create your security account
             </CardDescription>
           </div>
         </CardHeader>
@@ -96,6 +97,24 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
+                className="bg-background/50"
+              />
+              <p className="text-xs text-muted-foreground">
+                Password must be at least 6 characters
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
                 className="bg-background/50"
               />
             </div>
@@ -114,18 +133,18 @@ export default function Login() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Signing in...
+                  Creating account...
                 </>
               ) : (
-                'Sign In'
+                'Sign Up'
               )}
             </Button>
           </form>
 
           <div className="mt-4 text-center text-sm">
-            <span className="text-muted-foreground">Don't have an account? </span>
-            <Link to="/signup" className="text-primary hover:underline">
-              Sign up
+            <span className="text-muted-foreground">Already have an account? </span>
+            <Link to="/login" className="text-primary hover:underline">
+              Sign in
             </Link>
           </div>
         </CardContent>

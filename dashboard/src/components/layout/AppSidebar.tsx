@@ -44,9 +44,15 @@ export const AppSidebar = () => {
   const { logout } = useAuth();
   const isCollapsed = state === 'collapsed';
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Still navigate to login even if logout fails
+      navigate('/login');
+    }
   };
 
   return (
@@ -58,7 +64,7 @@ export const AppSidebar = () => {
           </div>
           {!isCollapsed && (
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-foreground">PSIEM</span>
+              <span className="text-sm font-semibold text-foreground">AEGIS SIEM</span>
               <span className="text-xs text-muted-foreground">Security Dashboard</span>
             </div>
           )}

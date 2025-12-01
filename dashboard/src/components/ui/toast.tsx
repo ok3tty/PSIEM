@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { TOAST_AUTO_DISMISS_DELAY } from "@/hooks/use-toast";
 
 const ToastProvider = ToastPrimitives.Provider;
 
@@ -41,7 +42,19 @@ const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> & VariantProps<typeof toastVariants>
 >(({ className, variant, ...props }, ref) => {
-  return <ToastPrimitives.Root ref={ref} className={cn(toastVariants({ variant }), className)} {...props} />;
+  return (
+    <ToastPrimitives.Root ref={ref} className={cn(toastVariants({ variant }), "relative overflow-hidden", className)} {...props}>
+      <div className="absolute top-0 left-0 right-0 h-0.5 bg-primary/20">
+        <div 
+          className="h-full bg-primary origin-left" 
+          style={{
+            animation: `toast-timer ${TOAST_AUTO_DISMISS_DELAY}ms linear forwards`
+          }}
+        />
+      </div>
+      {props.children}
+    </ToastPrimitives.Root>
+  );
 });
 Toast.displayName = ToastPrimitives.Root.displayName;
 
