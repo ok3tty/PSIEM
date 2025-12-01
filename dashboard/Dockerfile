@@ -14,6 +14,10 @@ COPY . .
 
 # Fix permissions and build
 RUN chmod -R +x node_modules/.bin && npm run build
+=======
+# Build the application
+RUN npm run build
+
 
 # Production stage
 FROM nginx:alpine
