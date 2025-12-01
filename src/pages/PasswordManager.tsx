@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Search, Eye, EyeOff, Copy, Edit, Trash2, Lock, RefreshCw } from 'lucide-react';
+import { Plus, Search, Eye, EyeOff, Copy, Edit, Trash2, Lock, RefreshCw, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { mockPasswords } from '@/lib/mockData';
 import { useToast } from '@/hooks/use-toast';
 import {
   Select,
@@ -15,7 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { PasswordEntry } from '@/types';
+import { passwordService, type DecryptedPasswordEntry } from '@/lib/passwordService';
+import { MasterPasswordUnlock } from '@/components/MasterPasswordUnlock';
+import { MasterPasswordSetup } from '@/components/MasterPasswordSetup';
+import { generateSecurePassword } from '@/lib/encryption';
 
 const PASSWORD_STORAGE_KEY = 'psiem_passwords';
 const isBrowser = typeof window !== 'undefined';
@@ -38,31 +40,8 @@ const emptyFormState: PasswordFormState = {
   tags: '',
 };
 
-const normalizePasswordEntry = (entry: any): PasswordEntry => ({
-  ...entry,
-  lastModified: entry?.lastModified ? new Date(entry.lastModified) : new Date(),
-});
-
-const loadInitialPasswords = (): PasswordEntry[] => {
-  if (!isBrowser) return mockPasswords;
-
-  const saved = localStorage.getItem(PASSWORD_STORAGE_KEY);
-  if (!saved) return mockPasswords.map(normalizePasswordEntry);
-
-  try {
-    const parsed = JSON.parse(saved);
-    if (Array.isArray(parsed)) {
-      return parsed.map(normalizePasswordEntry);
-    }
-  } catch (error) {
-    console.error('Failed to load saved passwords', error);
-  }
-
-  return mockPasswords.map(normalizePasswordEntry);
-};
-
 export default function PasswordManager() {
-  const [passwords, setPasswords] = useState<PasswordEntry[]>(() => loadInitialPasswords());
+  const [passwords, setPasswords] = useState<DecryptedPasswordEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -70,16 +49,104 @@ export default function PasswordManager() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formState, setFormState] = useState<PasswordFormState>(emptyFormState);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFirstTime, setIsFirstTime] = useState<boolean | null>(null);
   const { toast } = useToast();
 
+  const checkFirstTimeSetup = async () => {
+    setIsLoading(true);
+    try {
+      const hasSetup = await passwordService.hasVaultSetup();
+      setIsFirstTime(!hasSetup);
+    } catch (error) {
+      console.error('Error checking vault setup:', error);
+      setIsFirstTime(true); // Assume first time on error
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Check if this is first time setup
   useEffect(() => {
-    if (!isBrowser) return;
-    const serializable = passwords.map((entry) => ({
-      ...entry,
-      lastModified: entry.lastModified.toISOString(),
-    }));
-    localStorage.setItem(PASSWORD_STORAGE_KEY, JSON.stringify(serializable));
-  }, [passwords]);
+    checkFirstTimeSetup();
+  }, []);
+
+  // Load passwords when vault is unlocked
+  useEffect(() => {
+    if (isUnlocked) {
+      loadPasswords();
+    }
+  }, [isUnlocked]);
+
+  const loadPasswords = async () => {
+    setIsLoading(true);
+    try {
+      const data = await passwordService.fetchPasswords();
+      setPasswords(data);
+    } catch (error) {
+      toast({
+        title: 'Error loading passwords',
+        description: error instanceof Error ? error.message : 'Failed to load passwords',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSetup = async (masterPassword: string): Promise<boolean> => {
+    try {
+      passwordService.setMasterPassword(masterPassword);
+      setIsFirstTime(false);
+      setIsUnlocked(true);
+      toast({
+        title: 'Vault Created',
+        description: 'Your secure password vault has been created',
+      });
+      return true;
+    } catch (error) {
+      console.error('Setup error:', error);
+      return false;
+    }
+  }
+
+  const handleUnlock = async (masterPassword: string): Promise<boolean> => {
+    try {
+      const isValid = await passwordService.verifyMasterPassword(masterPassword);
+      if (isValid) {
+        passwordService.setMasterPassword(masterPassword);
+        setIsUnlocked(true);
+        toast({
+          title: 'Vault Unlocked',
+          description: 'Your password vault is now accessible',
+        });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Unlock error:', error);
+      return false;
+    }
+  }
+
+  const handleLockVault = () => {
+    passwordService.clearMasterPassword();
+    setIsUnlocked(false);
+    setPasswords([]);
+    setVisiblePasswords(new Set());
+    toast({
+      title: 'Vault Locked',
+      description: 'Your passwords are now secured',
+    });
+  };
+
+  useEffect(() => {
+    // Clear master password on unmount
+    return () => {
+      passwordService.clearMasterPassword();
+    };
+  }, []);
 
   const categories = useMemo(
     () => ['all', ...Array.from(new Set(passwords.map((pwd) => pwd.category)))],
@@ -109,7 +176,7 @@ export default function PasswordManager() {
       if (sortBy === 'category') {
         return a.category.localeCompare(b.category);
       }
-      return b.lastModified.getTime() - a.lastModified.getTime();
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     });
 
     return sorted;
@@ -141,26 +208,38 @@ export default function PasswordManager() {
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const entry = passwords.find((pwd) => pwd.id === id);
     if (!entry) return;
 
     const confirmed = window.confirm(`Delete ${entry.name}? This cannot be undone.`);
     if (!confirmed) return;
 
-    setPasswords((prev) => prev.filter((pwd) => pwd.id !== id));
-    setVisiblePasswords((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-    toast({
-      title: 'Entry deleted',
-      description: `${entry.name} has been removed`,
-    });
+    setIsLoading(true);
+    try {
+      await passwordService.deletePassword(id);
+      setPasswords((prev) => prev.filter((pwd) => pwd.id !== id));
+      setVisiblePasswords((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      toast({
+        title: 'Entry deleted',
+        description: `${entry.name} has been removed`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Delete failed',
+        description: error instanceof Error ? error.message : 'Failed to delete password',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const openEditor = (entry?: PasswordEntry) => {
+  const openEditor = (entry?: DecryptedPasswordEntry) => {
     setEditingId(entry?.id ?? null);
     setFormState({
       name: entry?.name ?? '',
@@ -179,7 +258,7 @@ export default function PasswordManager() {
     setFormState(emptyFormState);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmedName = formState.name.trim();
     const trimmedUser = formState.username.trim();
     const trimmedPassword = formState.password.trim();
@@ -199,30 +278,50 @@ export default function PasswordManager() {
       .map((tag) => tag.trim())
       .filter(Boolean);
 
-    const baseEntry: PasswordEntry = {
-      id: editingId ?? crypto.randomUUID?.() ?? `pw-${Date.now()}`,
-      name: trimmedName,
-      username: trimmedUser,
-      password: trimmedPassword,
-      url: formState.url.trim(),
-      category: trimmedCategory,
-      tags,
-      lastModified: new Date(),
-    };
-
-    setPasswords((prev) => {
+    setIsLoading(true);
+    try {
       if (editingId) {
-        return prev.map((pwd) => (pwd.id === editingId ? baseEntry : pwd));
+        // Update existing password
+        const updated = await passwordService.updatePassword({
+          id: editingId,
+          name: trimmedName,
+          username: trimmedUser,
+          password: trimmedPassword,
+          url: formState.url.trim(),
+          category: trimmedCategory,
+          tags,
+        });
+        setPasswords((prev) => prev.map((pwd) => (pwd.id === editingId ? updated : pwd)));
+        toast({
+          title: 'Password updated',
+          description: `${trimmedName} was updated successfully`,
+        });
+      } else {
+        // Create new password
+        const created = await passwordService.createPassword({
+          name: trimmedName,
+          username: trimmedUser,
+          password: trimmedPassword,
+          url: formState.url.trim(),
+          category: trimmedCategory,
+          tags,
+        });
+        setPasswords((prev) => [created, ...prev]);
+        toast({
+          title: 'Password saved',
+          description: `${trimmedName} added to vault`,
+        });
       }
-      return [baseEntry, ...prev];
-    });
-
-    toast({
-      title: editingId ? 'Password updated' : 'Password saved',
-      description: `${trimmedName} ${editingId ? 'was updated' : 'added to vault'}`,
-    });
-
-    closeEditor();
+      closeEditor();
+    } catch (error) {
+      toast({
+        title: editingId ? 'Update failed' : 'Save failed',
+        description: error instanceof Error ? error.message : 'Failed to save password',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const resetFilters = () => {
@@ -230,6 +329,37 @@ export default function PasswordManager() {
     setSelectedCategory('all');
     setSortBy('date');
   };
+
+  const handleGeneratePassword = () => {
+    const generated = generateSecurePassword(16);
+    setFormState((prev) => ({ ...prev, password: generated }));
+    toast({
+      title: 'Password generated',
+      description: 'A secure password has been created',
+    });
+  };
+
+  // Show loading while checking first-time status
+  if (isFirstTime === null) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Loading vault...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show setup screen for first-time users
+  if (isFirstTime) {
+    return <MasterPasswordSetup onSetup={handleSetup} isLoading={isLoading} />;
+  }
+
+  // Show unlock screen if vault is not unlocked
+  if (!isUnlocked) {
+    return <MasterPasswordUnlock onUnlock={handleUnlock} isLoading={isLoading} />;
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -241,6 +371,10 @@ export default function PasswordManager() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleLockVault} className="hidden md:flex">
+            <Lock className="w-4 h-4 mr-2" />
+            Lock Vault
+          </Button>
           <Button variant="outline" onClick={resetFilters} className="hidden md:flex">
             <RefreshCw className="w-4 h-4 mr-2" />
             Reset filters
@@ -252,17 +386,16 @@ export default function PasswordManager() {
         </div>
       </div>
 
-      <Card className="glass-card border-info/30">
+      <Card className="glass-card border-success/30">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
-            <Lock className="w-5 h-5 text-info mt-1" />
+            <Lock className="w-5 h-5 text-success mt-1" />
             <div>
-              <p className="text-sm text-muted-foreground">
-                Placeholder: AES-256 encryption hook-up pending. Entries are stored locally in your
-                browser only.
+              <p className="text-sm font-medium text-success">
+                🔒 End-to-End Encrypted with AES-256
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Use the add button to seed your own secrets and toggle visibility when needed.
+                All passwords are encrypted locally in your browser before being stored. Your master password never leaves your device.
               </p>
             </div>
           </div>
@@ -400,7 +533,7 @@ export default function PasswordManager() {
                 </div>
 
                 <div className="text-xs text-muted-foreground">
-                  Modified: {password.lastModified.toLocaleDateString()}
+                  Modified: {new Date(password.updated_at).toLocaleDateString()}
                 </div>
               </CardContent>
             </Card>
@@ -440,13 +573,25 @@ export default function PasswordManager() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password-value">Password</Label>
-              <Input
-                id="password-value"
-                type="text"
-                placeholder="StrongPass!2024"
-                value={formState.password}
-                onChange={(e) => setFormState((prev) => ({ ...prev, password: e.target.value }))}
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="password-value"
+                  type="text"
+                  placeholder="StrongPass!2024"
+                  value={formState.password}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, password: e.target.value }))}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleGeneratePassword}
+                  className="flex-shrink-0"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="url">URL (optional)</Label>
