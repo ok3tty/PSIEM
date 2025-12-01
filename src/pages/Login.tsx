@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Shield, Loader2, Lock } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Shield, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -12,29 +11,11 @@ import { useToast } from '@/hooks/use-toast';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  useEffect(() => {
-    const savedRemember = localStorage.getItem('psiem_remember') === 'true';
-    setRememberMe(savedRemember);
-
-    if (savedRemember) {
-      const storedUser = localStorage.getItem('psiem_user');
-      if (storedUser) {
-        try {
-          const parsed = JSON.parse(storedUser);
-          setEmail(parsed.email || '');
-        } catch (error) {
-          console.error('Failed to parse stored user', error);
-        }
-      }
-    }
-  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -47,10 +28,10 @@ export default function Login() {
     setFormError(null);
     setIsLoading(true);
     try {
-      await login(email, password, rememberMe);
+      await login(email, password);
       toast({
         title: 'Login Successful',
-        description: 'Welcome to PSIEM Security Dashboard',
+        description: 'Welcome to the AEGIS Security Dashboard',
       });
       navigate('/dashboard');
     } catch (error) {
@@ -84,7 +65,7 @@ export default function Login() {
             <Shield className="w-10 h-10 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-3xl font-bold">AEGIS</CardTitle>
+            <CardTitle className="text-3xl font-bold">AEGIS SIEM</CardTitle>
             <CardDescription className="mt-2">
               Personal Security Information & Event Management
             </CardDescription>
@@ -119,17 +100,6 @@ export default function Login() {
               />
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="remember"
-                checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-              />
-              <Label htmlFor="remember" className="text-sm cursor-pointer">
-                Remember me
-              </Label>
-            </div>
-
             {formError && (
               <p className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-md p-3">
                 {formError}
@@ -152,12 +122,11 @@ export default function Login() {
             </Button>
           </form>
 
-          <div className="mt-6 p-3 rounded-lg bg-info/10 border border-info/30 flex items-start gap-2">
-            <Lock className="w-4 h-4 text-info mt-0.5" />
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p className="font-medium text-foreground">Mock authentication – Keycloak placeholder</p>
-              <p className="text-info">Enter any credentials to continue.</p>
-            </div>
+          <div className="mt-4 text-center text-sm">
+            <span className="text-muted-foreground">Don't have an account? </span>
+            <Link to="/signup" className="text-primary hover:underline">
+              Sign up
+            </Link>
           </div>
         </CardContent>
       </Card>

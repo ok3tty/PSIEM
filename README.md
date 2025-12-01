@@ -1,5 +1,5 @@
 <div align="center">
-<h1 style="text-align:center;">🛡️ PSIEM Security Dashboard</h1>
+<h1 style="text-align:center;">AEGIS Security Dashboard</h1>
 
 ![PSIEM Dashboard](https://img.shields.io/badge/PSIEM-Security%20Dashboard-8b5cf6?style=for-the-badge)
 ![React](https://img.shields.io/badge/React-18+-61dafb?style=for-the-badge&logo=react)

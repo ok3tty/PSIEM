@@ -6,7 +6,7 @@ export default function Settings() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
         <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground mt-1">Configure your PSIEM dashboard preferences</p>
+        <p className="text-muted-foreground mt-1">Configure your AEGIS dashboard preferences</p>
       </div>
 
       <Card className="glass-card">

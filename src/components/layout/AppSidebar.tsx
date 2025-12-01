@@ -44,9 +44,15 @@ export const AppSidebar = () => {
   const { logout } = useAuth();
   const isCollapsed = state === 'collapsed';
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Still navigate to login even if logout fails
+      navigate('/login');
+    }
   };
 
   return (
