@@ -42,7 +42,7 @@ export default function SystemHealth() {
             </div>
             <div className="flex gap-2">
               <a 
-                href="http://52.225.85.38:3000" 
+                href="https://myaegis.org/grafana" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-md text-sm font-medium transition-colors"
@@ -50,7 +50,7 @@ export default function SystemHealth() {
                 Open Grafana →
               </a>
               <a 
-                href="http://52.225.85.38:9090" 
+                href="https://myaegis.org/prometheus" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-md text-sm font-medium transition-colors"

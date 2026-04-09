@@ -128,10 +128,71 @@ services:
       - react-dashboard
     networks:
       - psiem-net
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: psiem_prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.external-url=https://myaegis.org/prometheus/'
+      - '--web.route-prefix=/prometheus'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - psiem-net
+    restart: unless-stopped
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: psiem_grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SERVER_DOMAIN=myaegis.org
+      - GF_SERVER_ROOT_URL=https://myaegis.org/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    networks:
+      - psiem-net
+    restart: unless-stopped
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: psiem_node_exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - psiem-net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: psiem_cadvisor
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - psiem-net
 volumes:
   es_data:
   filebeat_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   psiem-net:
