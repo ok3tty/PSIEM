@@ -167,6 +167,12 @@ services:
       - GF_FEATURE_TOGGLES_ENABLE=accessControlOnCall
       - GF_AUTH_DISABLE_LOGIN_FORM=false
       - GF_DATASOURCES_DEFAULT_ACCESS_MODE=proxy
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp.gmail.com:587
+      - GF_SMTP_USER=psiemaeg1s@gmail.com
+      - GF_SMTP_PASSWORD=jxoklzgfeuyzmzja 
+      - GF_SMTP_FROM_ADDRESS=psiemaeg1s@gmail.com
+      - GF_SMTP_FROM_NAME=AEGIS SIEM
     networks:
       - psiem-net
     restart: unless-stopped
