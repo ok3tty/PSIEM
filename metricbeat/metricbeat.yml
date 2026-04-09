@@ -1,0 +1,53 @@
+metricbeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: false
+
+metricbeat.modules:
+# System module
+- module: system
+  period: 10s
+  metricsets:
+    - cpu
+    - load
+    - memory
+    - network
+    - process
+    - process_summary
+    - socket_summary
+  process.include_top_n:
+    by_cpu: 5
+    by_memory: 5
+
+- module: system
+  period: 1m
+  metricsets:
+    - filesystem
+    - fsstat
+  processors:
+  - drop_event.when.regexp:
+      system.filesystem.mount_point: '^/(sys|proc|dev|host|etc)($$|/)'
+
+# Docker module
+- module: docker
+  period: 10s
+  hosts: ["unix:///var/run/docker.sock"]
+  metricsets:
+    - container
+    - cpu
+    - diskio
+    - healthcheck
+    - info
+    - memory
+    - network
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  indices:
+    - index: "metricbeat-%{[agent.version]}-%{+yyyy.MM.dd}"
+
+setup.kibana:
+  host: "kibana:5601"
+
+setup.ilm.enabled: false
+setup.template.name: "metricbeat"
+setup.template.pattern: "metricbeat-*"
