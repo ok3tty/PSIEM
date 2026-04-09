@@ -22,6 +22,9 @@ const getStatusIcon = (serviceName: string) => {
   return Zap;
 };
 
+const GRAFANA_NODE_EXPORTER_URL = "https://myaegis.org/grafana/d/rYdddlPWk/node-exporter-full?orgId=1&from=now-24h&to=now&timezone=browser&var-ds_prometheus=PBFA97CFB590B2093&var-job=node-exporter&refresh=1m&kiosk";
+const GRAFANA_CADVISOR_URL = "https://myaegis.org/grafana/d/pMEd7m0Mz/cadvisor-exporter?orgId=1&from=now-6h&to=now&timezone=browser&var-host=$__all&var-container=$__all&var-DS_PROMETHEUS=PBFA97CFB590B2093&kiosk";
+
 export default function SystemHealth() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -30,7 +33,7 @@ export default function SystemHealth() {
         <p className="text-muted-foreground mt-1">Monitor infrastructure and service status</p>
       </div>
 
-     {/* Monitoring Integration Notice */}
+      {/* Monitoring Integration Notice */}
       <Card className="glass-card border-primary/30">
         <CardContent className="p-4">
           <div className="flex items-center justify-between gap-3">
@@ -178,6 +181,47 @@ export default function SystemHealth() {
                 <Line type="monotone" dataKey="out" stroke="hsl(var(--warning))" strokeWidth={2} name="Outgoing" />
               </LineChart>
             </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Grafana Embedded Dashboards */}
+      <div className="space-y-6">
+        <h2 className="text-xl font-semibold">Live Grafana Dashboards</h2>
+
+        {/* Node Exporter */}
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>Node Exporter — VM Metrics</CardTitle>
+            <CardDescription>Real-time CPU, memory, disk and network from Prometheus</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0 overflow-hidden rounded-b-lg">
+            <iframe
+              src={GRAFANA_NODE_EXPORTER_URL}
+              width="100%"
+              height="600"
+              frameBorder="0"
+              title="Node Exporter Dashboard"
+              className="rounded-b-lg"
+            />
+          </CardContent>
+        </Card>
+
+        {/* Cadvisor */}
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>Container Metrics — cAdvisor</CardTitle>
+            <CardDescription>Per-container CPU, memory and network usage</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0 overflow-hidden rounded-b-lg">
+            <iframe
+              src={GRAFANA_CADVISOR_URL}
+              width="100%"
+              height="600"
+              frameBorder="0"
+              title="cAdvisor Dashboard"
+              className="rounded-b-lg"
+            />
           </CardContent>
         </Card>
       </div>
