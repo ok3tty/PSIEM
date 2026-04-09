@@ -30,14 +30,34 @@ export default function SystemHealth() {
         <p className="text-muted-foreground mt-1">Monitor infrastructure and service status</p>
       </div>
 
-      {/* Monitoring Integration Notice */}
+     {/* Monitoring Integration Notice */}
       <Card className="glass-card border-primary/30">
         <CardContent className="p-4">
-          <div className="flex items-center gap-3">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            <p className="text-sm text-muted-foreground">
-              📈 <span className="text-primary font-semibold">Monitoring Integration:</span> Prometheus + Grafana - Advanced metrics and alerting (placeholder)
-            </p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              <p className="text-sm text-muted-foreground">
+                📈 <span className="text-primary font-semibold">Monitoring Integration:</span> Prometheus + Grafana - Advanced metrics and alerting
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <a 
+                href="http://52.225.85.38:3000" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-md text-sm font-medium transition-colors"
+              >
+                Open Grafana →
+              </a>
+              <a 
+                href="http://52.225.85.38:9090" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-md text-sm font-medium transition-colors"
+              >
+                Open Prometheus →
+              </a>
+            </div>
           </div>
         </CardContent>
       </Card>
