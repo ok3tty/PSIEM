@@ -1,175 +1,239 @@
-import { useState } from 'react';
-import { Send, Bot, User, Sparkles } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ChatMessage } from '@/types';
+import { useState, useRef, useEffect } from "react";
+import { Send, Bot, User, Loader2, AlertTriangle, Database, Shield, TerminalSquare } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
-const initialMessages: ChatMessage[] = [
-  {
-    id: '1',
-    role: 'assistant',
-    content: 'Hello! I\'m your AEGIS AI Security Assistant. I can help you analyze security threats, review logs, and provide recommendations. How can I assist you today?',
-    timestamp: new Date(),
-  },
+interface ESResult {
+  [key: string]: unknown;
+}
+
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  esResults?: ESResult[];
+  queryUsed?: object;
+  timestamp: Date;
+  isError?: boolean;
+}
+
+const AI_ASSISTANT_URL =
+  import.meta.env.VITE_AI_ASSISTANT_URL || "http://localhost:8000";
+
+const SUGGESTED_PROMPTS = [
+  { icon: AlertTriangle, label: "Recent critical alerts", prompt: "Show me the 10 most recent critical Suricata alerts" },
+  { icon: Database, label: "Query failed logins", prompt: "Find all failed login attempts in the last hour from syslog" },
+  { icon: Shield, label: "Explain an alert", prompt: "Explain what an ET SCAN Nmap alert means and recommended response actions" },
+  { icon: TerminalSquare, label: "Top source IPs", prompt: "What are the top 5 source IPs generating the most alerts today?" },
 ];
 
+function formatTime(date: Date) {
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function ESResultsTable({ results }: { results: ESResult[] }) {
+  if (!results || results.length === 0) return null;
+  const keys = Object.keys(results[0]).slice(0, 6);
+
+  return (
+    <div className="mt-3 rounded-lg border border-border overflow-hidden text-xs">
+      <div className="bg-muted/50 px-3 py-1.5 flex items-center gap-2 border-b border-border">
+        <Database className="h-3 w-3 text-primary" />
+        <span className="text-muted-foreground font-medium">
+          {results.length} result{results.length !== 1 ? "s" : ""} from Elasticsearch
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-border">
+              {keys.map((k) => (
+                <th key={k} className="px-3 py-2 text-left text-muted-foreground font-medium whitespace-nowrap">
+                  {k}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {results.slice(0, 10).map((row, i) => (
+              <tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                {keys.map((k) => (
+                  <td key={k} className="px-3 py-2 text-foreground/80 whitespace-nowrap max-w-[200px] truncate">
+                    {String(row[k] ?? "—")}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function MessageBubble({ message }: { message: Message }) {
+  const isUser = message.role === "user";
+
+  return (
+    <div className={cn("flex gap-3 mb-4", isUser ? "flex-row-reverse" : "flex-row")}>
+      <div className={cn(
+        "flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center",
+        isUser ? "bg-primary/20 border border-primary/40" : "bg-muted border border-border glow-purple-sm"
+      )}>
+        {isUser ? <User className="h-4 w-4 text-primary" /> : <Bot className="h-4 w-4 text-primary" />}
+      </div>
+
+      <div className={cn("flex flex-col max-w-[75%]", isUser ? "items-end" : "items-start")}>
+        <div className={cn(
+          "rounded-2xl px-4 py-3 text-sm leading-relaxed",
+          isUser
+            ? "bg-primary text-primary-foreground rounded-tr-sm"
+            : message.isError
+            ? "bg-destructive/10 border border-destructive/30 text-foreground rounded-tl-sm"
+            : "bg-card border border-border text-foreground rounded-tl-sm"
+        )}>
+          <p className="whitespace-pre-wrap">{message.content}</p>
+        </div>
+
+        {message.esResults && message.esResults.length > 0 && (
+          <div className="w-full max-w-2xl">
+            <ESResultsTable results={message.esResults} />
+          </div>
+        )}
+
+        <span className="text-xs text-muted-foreground mt-1 px-1">{formatTime(message.timestamp)}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function AIAssistant() {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([{
+    id: "welcome",
+    role: "assistant",
+    content: "Hello! I'm your PSIEM AI Security Analyst. I can help you query logs, explain alerts, and recommend response actions.\n\nTry asking me about recent alerts, suspicious IPs, or any security event in your environment.",
+    timestamp: new Date(),
+  }]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input,
-      timestamp: new Date(),
-    };
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || isLoading) return;
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
-    setIsTyping(true);
+    const userMsg: Message = { id: Date.now().toString(), role: "user", content: text.trim(), timestamp: new Date() };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMessage: ChatMessage = {
+    const history = messages
+      .filter((m) => m.id !== "welcome")
+      .map((m) => ({ role: m.role, content: m.content }));
+
+    try {
+      const res = await fetch(`${AI_ASSISTANT_URL}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text.trim(), conversation_history: history }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Request failed");
+      }
+
+      const data = await res.json();
+      setMessages((prev) => [...prev, {
         id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'This is a placeholder response. The AI assistant will be integrated with ChatGPT or Gemini API to provide real-time threat analysis and security recommendations.',
+        role: "assistant",
+        content: data.reply,
+        esResults: data.es_results,
+        queryUsed: data.query_used,
         timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-      setIsTyping(false);
-    }, 1500);
+      }]);
+    } catch (err: unknown) {
+      setMessages((prev) => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `⚠️ Error: ${err instanceof Error ? err.message : "Could not reach AI assistant service."}`,
+        timestamp: new Date(),
+        isError: true,
+      }]);
+    } finally {
+      setIsLoading(false);
+      textareaRef.current?.focus();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); }
   };
 
   return (
-    <div className="h-[calc(100vh-8rem)] animate-in fade-in duration-500">
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
-        {/* Sidebar - Conversation History */}
-        <Card className="glass-card lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-lg">Conversations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {['Today', 'Yesterday', 'Last Week'].map((period) => (
-                <div key={period} className="space-y-2">
-                  <p className="text-xs text-muted-foreground font-semibold">{period}</p>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start text-left"
-                  >
-                    <div className="truncate">Threat Analysis Session</div>
-                  </Button>
-                </div>
-              ))}
+    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-5xl mx-auto px-4 py-6 gap-4">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center glow-purple-sm">
+          <Bot className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-lg font-semibold text-foreground">AI Security Analyst</h1>
+          <p className="text-xs text-muted-foreground">Powered by Gemini · Connected to Elasticsearch</p>
+        </div>
+        <Badge className="ml-auto border border-success/40 text-success text-xs bg-transparent">
+          <span className="h-1.5 w-1.5 rounded-full bg-success inline-block mr-1.5 animate-pulse" />
+          Online
+        </Badge>
+      </div>
+
+      <div className="flex-1 glass-card rounded-2xl overflow-hidden flex flex-col">
+        <ScrollArea className="flex-1 p-4">
+          {messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)}
+          {isLoading && (
+            <div className="flex gap-3 mb-4">
+              <div className="h-8 w-8 rounded-full bg-muted border border-border flex items-center justify-center">
+                <Bot className="h-4 w-4 text-primary" />
+              </div>
+              <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2">
+                <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                <span className="text-sm text-muted-foreground">Analyzing...</span>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          )}
+          <div ref={bottomRef} />
+        </ScrollArea>
 
-        {/* Main Chat Area */}
-        <div className="lg:col-span-3 flex flex-col gap-4">
-          {/* AI Integration Notice */}
-          <Card className="glass-card border-primary/30">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <Sparkles className="w-5 h-5 text-primary" />
-                <p className="text-sm text-muted-foreground">
-                  🤖 <span className="text-primary font-semibold">AI Integration:</span> ChatGPT/Gemini API - Real-time threat analysis and security recommendations coming soon
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        {messages.length === 1 && (
+          <div className="px-4 pb-3 flex flex-wrap gap-2">
+            {SUGGESTED_PROMPTS.map(({ icon: Icon, label, prompt }) => (
+              <button key={label} onClick={() => sendMessage(prompt)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border bg-muted/40 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/10 transition-smooth">
+                <Icon className="h-3 w-3" />{label}
+              </button>
+            ))}
+          </div>
+        )}
 
-          {/* Chat Messages */}
-          <Card className="glass-card flex-1 flex flex-col">
-            <CardHeader className="border-b border-border">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                  <Bot className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">AI Security Assistant</CardTitle>
-                  <p className="text-xs text-success">● Online</p>
-                </div>
-              </div>
-            </CardHeader>
-
-            <ScrollArea className="flex-1 p-6">
-              <div className="space-y-6">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
-                  >
-                    <Avatar className={message.role === 'assistant' ? 'bg-primary/20' : 'bg-secondary/20'}>
-                      <AvatarFallback>
-                        {message.role === 'assistant' ? (
-                          <Bot className="w-5 h-5 text-primary" />
-                        ) : (
-                          <User className="w-5 h-5 text-secondary" />
-                        )}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    <div className={`flex-1 max-w-[80%] ${message.role === 'user' ? 'text-right' : ''}`}>
-                      <div
-                        className={`inline-block p-4 rounded-lg ${
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
-                        }`}
-                      >
-                        <p className="text-sm">{message.content}</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {message.timestamp.toLocaleTimeString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-
-                {isTyping && (
-                  <div className="flex gap-3">
-                    <Avatar className="bg-primary/20">
-                      <AvatarFallback>
-                        <Bot className="w-5 h-5 text-primary" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="bg-muted p-4 rounded-lg">
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" />
-                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0.2s' }} />
-                        <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0.4s' }} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-
-            {/* Input Area */}
-            <CardContent className="border-t border-border p-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Ask about threats, analyze logs, or get security recommendations..."
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                  className="flex-1"
-                />
-                <Button onClick={handleSend} className="glow-purple-sm">
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="border-t border-border p-3 flex gap-3 items-end">
+          <Textarea ref={textareaRef} value={input} onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask about alerts, query logs, or describe a threat... (Enter to send)"
+            className="resize-none min-h-[44px] max-h-[140px] bg-muted/50 border-border text-sm focus-visible:ring-primary/50 rounded-xl"
+            rows={1} disabled={isLoading} />
+          <Button
+  onClick={() => sendMessage(input)}
+  disabled={!input.trim() || isLoading}
+  className="h-11 w-11 rounded-xl bg-primary hover:bg-primary/80 glow-purple-sm flex-shrink-0"
+>
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
     </div>
