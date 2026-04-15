@@ -122,6 +122,20 @@ export default function AIAssistant() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const [backendStatus, setBackendStatus] = useState<"online" | "offline" | "checking">("checking");
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const res = await fetch(`${AI_ASSISTANT_URL}/health`);
+        const data = await res.json();
+        setBackendStatus(data.status === "ok" ? "online" : "offline");
+      } catch {
+        setBackendStatus("offline");
+      }
+    };
+    checkHealth();
+  }, []);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -187,9 +201,9 @@ export default function AIAssistant() {
           <h1 className="text-lg font-semibold text-foreground">AI Security Analyst</h1>
           <p className="text-xs text-muted-foreground">Powered by Gemini · Connected to Elasticsearch</p>
         </div>
-        <Badge className="ml-auto border border-success/40 text-success text-xs bg-transparent">
-          <span className="h-1.5 w-1.5 rounded-full bg-success inline-block mr-1.5 animate-pulse" />
-          Online
+       <Badge className={cn("ml-auto border text-xs bg-transparent",backendStatus === "online" ? "border-success/40 text-success" : "border-destructive/40 text-destructive")}>
+        <span className={cn("h-1.5 w-1.5 rounded-full inline-block mr-1.5",backendStatus === "online" ? "bg-success animate-pulse" : "bg-destructive")} />
+        {backendStatus === "online" ? "Online" : backendStatus === "offline" ? "Offline" : "Connecting..."}
         </Badge>
       </div>
 
