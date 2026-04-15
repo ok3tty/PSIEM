@@ -56,7 +56,7 @@ Elasticsearch index patterns available:
 IMPORTANT:
 - When a real log search is needed, return an Elasticsearch query inside a fenced block exactly like this:
 
-[es_query block example]
+'''es_query
 {
   "index": "suricata-*",
   "query": {
@@ -64,7 +64,7 @@ IMPORTANT:
   },
   "size": 10
 }
-[/es_query block example]
+'''
 
 - Only return an es_query block when a real Elasticsearch search is needed.
 - For explanations and recommendations, be concise and actionable.
@@ -82,9 +82,9 @@ def extract_es_query(text: str) -> Optional[dict]:
 def run_es_query(query_obj: dict) -> list:
     try:
         index = query_obj.get("index", "*")
-        body = query_obj.get("query", {"match_all": {}})
+        query = query_obj.get("query", {"match_all": {}})
         size = query_obj.get("size", 10)
-        response = es.search(index=index, body={"query": body, "size": size})
+        response = es.search(index=index, body={"query": query, "size": size})
         return [hit["_source"] for hit in response["hits"]["hits"]]
     except Exception as e:
         return [{"error": str(e)}]
