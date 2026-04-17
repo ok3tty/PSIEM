@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from "react-router-dom";
 import { NotificationDropdown } from './NotificationDropdown';
 import {
   DropdownMenu,
@@ -16,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 
 export const DashboardHeader = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <header className="h-16 border-b border-border flex items-center px-6 gap-4 bg-card/50 backdrop-blur-sm">
@@ -50,8 +52,8 @@ export const DashboardHeader = () => {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile Settings</DropdownMenuItem>
-            <DropdownMenuItem>Security Preferences</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/settings")}>Profile Settings</DropdownMenuItem>
+	    <DropdownMenuItem>Security Preferences</DropdownMenuItem>
             <DropdownMenuItem>Help & Support</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

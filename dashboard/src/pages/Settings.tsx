@@ -20,9 +20,35 @@ export default function Settings() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">⚙️ Configuration options coming soon...</p>
-          </div>
+          <div className="space-y-6">
+  <div>
+    <label className="block text-sm font-medium mb-2">Username</label>
+    <input
+      type="text"
+      defaultValue="psiemaeg1s"
+      className="w-full rounded-lg bg-black border border-gray-700 px-4 py-3 text-white"
+    />
+  </div>
+
+  <div>
+    <label className="block text-sm font-medium mb-2">Email</label>
+    <input
+      type="email"
+      defaultValue="psiemaeg1s@gmail.com"
+      className="w-full rounded-lg bg-black border border-gray-700 px-4 py-3 text-white"
+    />
+  </div>
+
+  <div className="flex gap-4">
+    <button className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg">
+      Save Changes
+    </button>
+
+    <button className="bg-gray-800 hover:bg-gray-700 px-6 py-3 rounded-lg">
+      Reset
+    </button>
+  </div>
+</div>
         </CardContent>
       </Card>
     </div>
