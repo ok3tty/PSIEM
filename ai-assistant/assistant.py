@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 from dotenv import load_dotenv
 from elasticsearch import Elasticsearch
-from google import genai
+from groq import Groq
 import os
 import json
 import re
@@ -22,11 +22,11 @@ app.add_middleware(
 )
 
 ES_HOST = os.getenv("ELASTICSEARCH_HOST", "http://psiem_elasticsearch:9200")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
 
 es = Elasticsearch(ES_HOST)
-client = genai.Client(api_key=GEMINI_API_KEY)
+client = Groq(api_key=GROQ_API_KEY)
 
 class ChatRequest(BaseModel):
     message: str
@@ -47,16 +47,12 @@ Your capabilities:
 4. ANSWER QUESTIONS: Answer general cybersecurity questions about threats, CVEs, and attack patterns.
 
 Elasticsearch index patterns available:
-- suricata-*
-- zeek-*
-- syslog-*
-- winlogbeat-*
-- filebeat-*
+- suricata-* (Suricata IDS alerts — primary data source)
 
 IMPORTANT:
 - When a real log search is needed, return an Elasticsearch query inside a fenced block exactly like this:
 
-'''es_query
+```es_query
 {
   "index": "suricata-*",
   "query": {
@@ -64,7 +60,7 @@ IMPORTANT:
   },
   "size": 10
 }
-'''
+```
 
 - Only return an es_query block when a real Elasticsearch search is needed.
 - For explanations and recommendations, be concise and actionable.
@@ -84,19 +80,25 @@ def run_es_query(query_obj: dict) -> list:
         index = query_obj.get("index", "*")
         query = query_obj.get("query", {"match_all": {}})
         size = query_obj.get("size", 10)
-        response = es.search(index=index, body={"query": query, "size": size})
+
+        # Check if index exists first
+        if not es.indices.exists(index=index):
+            return [{"error": f"Index '{index}' does not exist yet. No data has been ingested for this source."}]
+
+        response = es.search(index=index, query=query, size=size)
         return [hit["_source"] for hit in response["hits"]["hits"]]
     except Exception as e:
         return [{"error": str(e)}]
 
-def build_prompt(history: list, new_message: str) -> str:
-    parts = [SYSTEM_PROMPT, "\nConversation history:\n"]
+def build_messages(history: list, new_message: str) -> list:
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     for item in history:
-        role = "User" if item.get("role") == "user" else "Assistant"
-        parts.append(f"{role}: {item.get('content', '')}")
-    parts.append(f"User: {new_message}")
-    parts.append("Assistant:")
-    return "\n".join(parts)
+        messages.append({
+            "role": item.get("role", "user"),
+            "content": item.get("content", "")
+        })
+    messages.append({"role": "user", "content": new_message})
+    return messages
 
 @app.get("/health")
 def health_check():
@@ -105,32 +107,31 @@ def health_check():
         es_ok = es.ping()
     except Exception:
         pass
-
     return {
         "status": "ok",
         "elasticsearch": "connected" if es_ok else "unreachable",
-        "ai_model": GEMINI_MODEL,
-        "gemini_key_configured": bool(GEMINI_API_KEY),
+        "ai_model": GROQ_MODEL,
+        "groq_key_configured": bool(GROQ_API_KEY),
     }
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     try:
-        if not GEMINI_API_KEY:
-            raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not configured.")
+        if not GROQ_API_KEY:
+            raise HTTPException(status_code=500, detail="GROQ_API_KEY is not configured.")
 
-        prompt = build_prompt(request.conversation_history, request.message)
+        messages = build_messages(request.conversation_history, request.message)
 
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=messages,
+            max_tokens=1000,
         )
 
-        reply_text = response.text or ""
+        reply_text = response.choices[0].message.content or ""
 
         es_query = extract_es_query(reply_text)
         es_results = None
-
         if es_query:
             es_results = run_es_query(es_query)
             reply_text = re.sub(r"```es_query.*?```", "", reply_text, flags=re.DOTALL).strip()
@@ -140,7 +141,6 @@ async def chat(request: ChatRequest):
             es_results=es_results,
             query_used=es_query,
         )
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

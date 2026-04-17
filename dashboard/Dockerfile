@@ -7,14 +7,16 @@ COPY package*.json ./
 RUN npm ci
 # Copy source code
 COPY . .
+# Build arg for Vite env vars
+ARG VITE_ELASTICSEARCH_URL=/elasticsearch
+ARG VITE_AI_ASSISTANT_URL
+ENV VITE_ELASTICSEARCH_URL=$VITE_ELASTICSEARCH_URL
+ENV VITE_AI_ASSISTANT_URL=$VITE_AI_ASSISTANT_URL
 # Fix permissions and build
 RUN chmod -R +x node_modules/.bin && npm run build
-
 # Production stage
 FROM nginx:alpine
-# Copy built files to nginx
 COPY --from=builder /app/dist /usr/share/nginx/html
-# Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/psiem.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

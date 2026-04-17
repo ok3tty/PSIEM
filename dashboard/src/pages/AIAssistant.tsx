@@ -199,7 +199,7 @@ export default function AIAssistant() {
         </div>
         <div>
           <h1 className="text-lg font-semibold text-foreground">AI Security Analyst</h1>
-          <p className="text-xs text-muted-foreground">Powered by Gemini · Connected to Elasticsearch</p>
+          <p className="text-xs text-muted-foreground">Powered by Groq · Connected to Elasticsearch</p>
         </div>
        <Badge className={cn("ml-auto border text-xs bg-transparent",backendStatus === "online" ? "border-success/40 text-success" : "border-destructive/40 text-destructive")}>
         <span className={cn("h-1.5 w-1.5 rounded-full inline-block mr-1.5",backendStatus === "online" ? "bg-success animate-pulse" : "bg-destructive")} />
