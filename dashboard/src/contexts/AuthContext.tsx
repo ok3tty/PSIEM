@@ -2,8 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
-type AuthUser = { 
-  email: string; 
+type AuthUser = {
+  email: string;
   name: string;
   id: string;
 };
@@ -15,97 +15,91 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  changePassword: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const mapUser = (supabaseUser: User | null): AuthUser | null => {
   if (!supabaseUser) return null;
-  
+
   return {
     id: supabaseUser.id,
     email: supabaseUser.email || '',
-    name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Security Admin',
+    name:
+      supabaseUser.user_metadata?.name ||
+      supabaseUser.email?.split('@')[0] ||
+      'Security Admin',
   };
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const mappedUser = mapUser(session?.user || null);
-      setUser(mappedUser);
-      setIsAuthenticated(!!session);
-      setIsLoading(false);
-    });
+    const initializeAuth = async () => {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
 
-    // Listen for auth changes
+        if (error) {
+          throw error;
+        }
+
+        setUser(mapUser(session?.user ?? null));
+      } catch (error) {
+        console.error('Error getting session:', error);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      const mappedUser = mapUser(session?.user || null);
-      setUser(mappedUser);
-      setIsAuthenticated(!!session);
+      setUser(mapUser(session?.user ?? null));
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
-    const normalizedEmail = email.trim().toLowerCase();
+    const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
 
-    if (!normalizedEmail || !trimmedPassword) {
+    if (!trimmedEmail || !trimmedPassword) {
       throw new Error('Email and password are required');
     }
 
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(normalizedEmail)) {
-      throw new Error('Enter a valid email address');
-    }
-
-    if (trimmedPassword.length < 6) {
-      throw new Error('Password must be at least 6 characters');
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
+    const { error } = await supabase.auth.signInWithPassword({
+      email: trimmedEmail,
       password: trimmedPassword,
     });
 
     if (error) {
       throw new Error(error.message);
     }
-
-    if (!data.user) {
-      throw new Error('Login failed');
-    }
   };
 
   const signUp = async (email: string, password: string) => {
-    const normalizedEmail = email.trim().toLowerCase();
+    const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
 
-    if (!normalizedEmail || !trimmedPassword) {
+    if (!trimmedEmail || !trimmedPassword) {
       throw new Error('Email and password are required');
     }
 
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(normalizedEmail)) {
-      throw new Error('Enter a valid email address');
-    }
-
-    if (trimmedPassword.length < 6) {
-      throw new Error('Password must be at least 6 characters');
-    }
-
     const { error } = await supabase.auth.signUp({
-      email: normalizedEmail,
+      email: trimmedEmail,
       password: trimmedPassword,
     });
 
@@ -116,15 +110,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     const { error } = await supabase.auth.signOut();
+
     if (error) {
       throw new Error(error.message);
     }
-    setUser(null);
-    setIsAuthenticated(false);
   };
 
+  const changePassword = async (newPassword: string) => {
+    const trimmedPassword = newPassword.trim();
+
+    if (!trimmedPassword) {
+      throw new Error('New password is required');
+    }
+
+    if (trimmedPassword.length < 8) {
+      throw new Error('New password must be at least 8 characters');
+    }
+
+    const { error } = await supabase.auth.updateUser({
+      password: trimmedPassword,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  };
+
+  const isAuthenticated = !!user;
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout, signUp }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        isLoading,
+        user,
+        login,
+        logout,
+        signUp,
+        changePassword,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -132,8 +157,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+
   return context;
 };

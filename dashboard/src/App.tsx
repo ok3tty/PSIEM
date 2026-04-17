@@ -17,6 +17,7 @@ import SystemHealth from "./pages/SystemHealth";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
+import Security from "./pages/Security";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const App = () => {
                 <Route path="/ai-assistant" element={<AIAssistant />} />
                 <Route path="/system-health" element={<SystemHealth />} />
                 <Route path="/settings" element={<Settings />} />
+		<Route path="/security" element={<Security />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
