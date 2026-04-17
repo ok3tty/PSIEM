@@ -53,8 +53,12 @@ export const DashboardHeader = () => {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate("/settings")}>Profile Settings</DropdownMenuItem>
-	    <DropdownMenuItem>Security Preferences</DropdownMenuItem>
-            <DropdownMenuItem>Help & Support</DropdownMenuItem>
+	    <DropdownMenuItem onClick={() => navigate("/security")}>
+  Security Preferences
+</DropdownMenuItem>
+<DropdownMenuItem onClick={() => navigate("/support")}>
+  Help & Support
+</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
