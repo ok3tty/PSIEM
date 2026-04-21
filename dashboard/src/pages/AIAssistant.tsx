@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Loader2, AlertTriangle, Database, Shield, TerminalSquare } from "lucide-react";
+import { Send, Bot, User, Loader2, AlertTriangle, Database, Shield, TerminalSquare, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -34,43 +34,82 @@ function formatTime(date: Date) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function DetailModal({ result, onClose }: { result: ESResult; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Database className="h-4 w-4 text-primary" />
+            <span className="font-semibold text-sm">Log Entry Details</span>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <ScrollArea className="p-5 max-h-[65vh]">
+          <div className="space-y-3">
+            {Object.entries(result).map(([key, value]) => (
+              <div key={key} className="grid grid-cols-3 gap-3 text-sm">
+                <span className="text-muted-foreground font-medium col-span-1 break-all">{key}</span>
+                <span className="text-foreground col-span-2 break-all font-mono text-xs bg-muted/40 px-2 py-1 rounded">
+                  {typeof value === "object" ? JSON.stringify(value, null, 2) : String(value ?? "—")}
+                </span>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    </div>
+  );
+}
+
 function ESResultsTable({ results }: { results: ESResult[] }) {
+  const [selectedResult, setSelectedResult] = useState<ESResult | null>(null);
   if (!results || results.length === 0) return null;
   const keys = Object.keys(results[0]).slice(0, 6);
 
   return (
-    <div className="mt-3 rounded-lg border border-border overflow-hidden text-xs">
-      <div className="bg-muted/50 px-3 py-1.5 flex items-center gap-2 border-b border-border">
-        <Database className="h-3 w-3 text-primary" />
-        <span className="text-muted-foreground font-medium">
-          {results.length} result{results.length !== 1 ? "s" : ""} from Elasticsearch
-        </span>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border">
-              {keys.map((k) => (
-                <th key={k} className="px-3 py-2 text-left text-muted-foreground font-medium whitespace-nowrap">
-                  {k}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {results.slice(0, 10).map((row, i) => (
-              <tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+    <>
+      {selectedResult && <DetailModal result={selectedResult} onClose={() => setSelectedResult(null)} />}
+      <div className="mt-3 rounded-lg border border-border overflow-hidden text-xs">
+        <div className="bg-muted/50 px-3 py-1.5 flex items-center gap-2 border-b border-border">
+          <Database className="h-3 w-3 text-primary" />
+          <span className="text-muted-foreground font-medium">
+            {results.length} result{results.length !== 1 ? "s" : ""} from Elasticsearch
+          </span>
+          <span className="text-muted-foreground ml-auto italic">Click a row for details</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
                 {keys.map((k) => (
-                  <td key={k} className="px-3 py-2 text-foreground/80 whitespace-nowrap max-w-[200px] truncate">
-                    {String(row[k] ?? "—")}
-                  </td>
+                  <th key={k} className="px-3 py-2 text-left text-muted-foreground font-medium whitespace-nowrap">
+                    {k}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {results.slice(0, 10).map((row, i) => (
+                <tr
+                  key={i}
+                  onClick={() => setSelectedResult(row)}
+                  className="border-b border-border/50 hover:bg-primary/10 cursor-pointer transition-colors"
+                >
+                  {keys.map((k) => (
+                    <td key={k} className="px-3 py-2 text-foreground/80 whitespace-nowrap max-w-[200px] truncate">
+                      {String(row[k] ?? "—")}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -242,10 +281,10 @@ export default function AIAssistant() {
             className="resize-none min-h-[44px] max-h-[140px] bg-muted/50 border-border text-sm focus-visible:ring-primary/50 rounded-xl"
             rows={1} disabled={isLoading} />
           <Button
-  onClick={() => sendMessage(input)}
-  disabled={!input.trim() || isLoading}
-  className="h-11 w-11 rounded-xl bg-primary hover:bg-primary/80 glow-purple-sm flex-shrink-0"
->
+            onClick={() => sendMessage(input)}
+            disabled={!input.trim() || isLoading}
+            className="h-11 w-11 rounded-xl bg-primary hover:bg-primary/80 glow-purple-sm flex-shrink-0"
+          >
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>

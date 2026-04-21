@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Download, Filter, Database, RefreshCw } from 'lucide-react';
+import { Search, Download, Filter, Database, RefreshCw, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -40,10 +41,158 @@ function getLogLevelColor(level: string) {
   }
 }
 
+interface LogEntry {
+  id: string;
+  timestamp: Date;
+  logLevel: string;
+  sourceSystem: string;
+  eventType: string;
+  message: string;
+  ipAddress: string;
+  destIp: string;
+  raw: any;
+}
+
+// Collapsible JSON block for large objects
+function JsonBlock({ value }: { value: any }) {
+  const [collapsed, setCollapsed] = useState(true);
+  const isObject = typeof value === 'object' && value !== null;
+  const preview = isObject
+    ? `{ ${Object.keys(value).slice(0, 3).join(', ')}${Object.keys(value).length > 3 ? ', ...' : ''} }`
+    : String(value ?? '—');
+
+  if (!isObject) {
+    return (
+      <span className="font-mono text-xs bg-muted/40 px-2 py-1 rounded break-all block">
+        {String(value ?? '—')}
+      </span>
+    );
+  }
+
+  return (
+    <div className="font-mono text-xs rounded overflow-hidden border border-border/50">
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="w-full flex items-center gap-2 px-2 py-1.5 bg-muted/40 hover:bg-muted/70 transition-colors text-left"
+      >
+        {collapsed
+          ? <ChevronRight className="h-3 w-3 text-primary flex-shrink-0" />
+          : <ChevronDown className="h-3 w-3 text-primary flex-shrink-0" />}
+        <span className="text-muted-foreground truncate">{preview}</span>
+      </button>
+      {!collapsed && (
+        <pre className="p-3 bg-background/60 text-foreground/80 overflow-x-auto text-xs leading-relaxed whitespace-pre-wrap break-all">
+          {JSON.stringify(value, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+// Priority fields shown at top of modal
+const PRIORITY_FIELDS = ['@timestamp', 'timestamp', 'alert', 'src_ip', 'dest_ip', 'proto', 'src_port', 'dest_port', 'icmp_type', 'icmp_code', 'flow'];
+// Fields to hide (noisy / not useful)
+const HIDDEN_FIELDS = ['log_type', '@version', 'ecs', 'tags', 'log'];
+
+function DetailModal({ log, onClose }: { log: LogEntry; onClose: () => void }) {
+  const raw = log.raw || {};
+
+  const priorityEntries = PRIORITY_FIELDS
+    .filter(k => k in raw && !HIDDEN_FIELDS.includes(k))
+    .map(k => [k, raw[k]] as [string, any]);
+
+  const otherEntries = Object.entries(raw)
+    .filter(([k]) => !PRIORITY_FIELDS.includes(k) && !HIDDEN_FIELDS.includes(k));
+
+  const renderField = (key: string, value: any) => (
+    <div key={key} className="grid grid-cols-3 gap-3 text-sm items-start">
+      <span className="text-muted-foreground font-medium col-span-1 pt-1 break-all">{key}</span>
+      <div className="col-span-2">
+        <JsonBlock value={value} />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-visibile mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-3">
+            <Database className="h-4 w-4 text-primary" />
+            <span className="font-semibold text-sm">Event Details</span>
+            <Badge className={getLogLevelColor(log.logLevel)}>{log.logLevel}</Badge>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <ScrollArea className="h-[65vh] overflow-y-auto">
+          <div className="p-5 space-y-4">
+
+            {/* Summary row */}
+            <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-muted/30 border border-border/50 text-sm">
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Timestamp</p>
+                <p className="font-mono text-xs">{log.timestamp.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Signature</p>
+                <p className="font-medium text-xs">{log.message}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Source IP</p>
+                <p className="font-mono text-xs">{log.ipAddress}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Dest IP</p>
+                <p className="font-mono text-xs">{log.destIp || '—'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Protocol</p>
+                <p className="font-mono text-xs">{log.eventType}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Category</p>
+                <p className="font-mono text-xs">{log.sourceSystem}</p>
+              </div>
+            </div>
+
+            {/* Priority fields */}
+            {priorityEntries.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Event Fields</p>
+                <div className="space-y-2">
+                  {priorityEntries.map(([k, v]) => renderField(k, v))}
+                </div>
+              </div>
+            )}
+
+            {/* Other fields */}
+            {otherEntries.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Additional Fields</p>
+                <div className="space-y-2">
+                  {otherEntries.map(([k, v]) => renderField(k, v))}
+                </div>
+              </div>
+            )}
+
+          </div>
+        </ScrollArea>
+      </div>
+    </div>
+  );
+}
+
 const PAGE_SIZE = 10;
 
 export default function EventLogs() {
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,24 +200,23 @@ export default function EventLogs() {
   const [selectedLevel, setSelectedLevel] = useState('all');
   const [selectedSource, setSelectedSource] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
+  const [selectedProto, setSelectedProto] = useState('all');
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const must: any[] = [{ exists: { field: 'alert.signature' } }];
-
       if (selectedLevel !== 'all') {
         const levelMap: Record<string, number> = { critical: 1, error: 2, warning: 3, info: 4 };
         if (levelMap[selectedLevel]) {
           must.push({ term: { 'alert.severity': levelMap[selectedLevel] } });
         }
       }
-
       if (selectedSource !== 'all') {
         must.push({ term: { 'alert.category.keyword': selectedSource } });
       }
-
       if (searchQuery.trim()) {
         must.push({
           multi_match: {
@@ -76,16 +224,20 @@ export default function EventLogs() {
             fields: ['alert.signature', 'alert.category', 'src_ip', 'dest_ip', 'proto'],
           },
         });
+      if (selectedProto === 'ipv4') {
+        must.push({ term: { 'network.type': 'ipv4' } });
+      } else if (selectedProto === 'ipv6') {
+        must.push({ term: { 'network.type': 'ipv6' } });
+      } else if (['tcp', 'udp', 'icmp'].includes(selectedProto)) {
+        must.push({ term: { 'proto': selectedProto } });
       }
-
+      }
       const res = await fetchFromES('/suricata-*/_search', {
         size: PAGE_SIZE,
         from: (currentPage - 1) * PAGE_SIZE,
         sort: [{ '@timestamp': { order: 'desc' } }],
         query: { bool: { must } },
-        _source: ['@timestamp', 'alert.signature', 'alert.severity', 'alert.category', 'src_ip', 'dest_ip', 'proto'],
       });
-
       const hits = res.hits?.hits || [];
       setTotal(res.hits?.total?.value || 0);
       setLogs(hits.map((h: any) => ({
@@ -97,22 +249,17 @@ export default function EventLogs() {
         message: h._source.alert?.signature || 'Unknown alert',
         ipAddress: h._source.src_ip || 'N/A',
         destIp: h._source.dest_ip || '',
+        raw: h._source,
       })));
     } catch (e: any) {
       setError(e.message || 'Failed to fetch logs');
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedLevel, selectedSource, currentPage]);
+  }, [searchQuery, selectedLevel, selectedSource,selectedProto, currentPage]);
 
-  useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, selectedLevel, selectedSource]);
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, selectedLevel, selectedSource, selectedProto]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -135,6 +282,8 @@ export default function EventLogs() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
+      {selectedLog && <DetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Event Logs</h1>
@@ -152,7 +301,6 @@ export default function EventLogs() {
         </div>
       </div>
 
-      {/* ELK Stack Notice */}
       <Card className="glass-card border-primary/30">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
@@ -173,7 +321,6 @@ export default function EventLogs() {
         </Card>
       )}
 
-      {/* Filters */}
       <Card className="glass-card">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
@@ -198,6 +345,19 @@ export default function EventLogs() {
                 <SelectItem value="info">Low</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={selectedProto} onValueChange={setSelectedProto}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Protocol" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Protocols</SelectItem>
+                 <SelectItem value="ipv4">IPv4 Only</SelectItem>
+                 <SelectItem value="ipv6">IPv6 Only</SelectItem>
+                 <SelectItem value="tcp">TCP</SelectItem>
+                 <SelectItem value="udp">UDP</SelectItem>
+                 <SelectItem value="icmp">ICMP</SelectItem>
+               </SelectContent>
+            </Select>
             <Button variant="outline" size="icon" onClick={fetchLogs}>
               <Filter className="w-4 h-4" />
             </Button>
@@ -205,12 +365,11 @@ export default function EventLogs() {
         </CardContent>
       </Card>
 
-      {/* Logs Table */}
       <Card className="glass-card">
         <CardHeader>
           <CardTitle>Event Log Entries</CardTitle>
           <CardDescription>
-            {loading ? 'Loading...' : `Showing ${logs.length} of ${total.toLocaleString()} entries (page ${currentPage} of ${totalPages || 1})`}
+            {loading ? 'Loading...' : `Showing ${logs.length} of ${total.toLocaleString()} entries (page ${currentPage} of ${totalPages || 1}) — Click a row for details`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -237,14 +396,16 @@ export default function EventLogs() {
                 </TableHeader>
                 <TableBody>
                   {logs.map((log) => (
-                    <TableRow key={log.id}>
+                    <TableRow
+                      key={log.id}
+                      onClick={() => setSelectedLog(log)}
+                      className="cursor-pointer hover:bg-primary/10 transition-colors"
+                    >
                       <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                         {log.timestamp.toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        <Badge className={getLogLevelColor(log.logLevel)}>
-                          {log.logLevel}
-                        </Badge>
+                        <Badge className={getLogLevelColor(log.logLevel)}>{log.logLevel}</Badge>
                       </TableCell>
                       <TableCell className="font-medium text-sm">{log.sourceSystem}</TableCell>
                       <TableCell>
@@ -259,25 +420,17 @@ export default function EventLogs() {
                   ))}
                 </TableBody>
               </Table>
-
-              {/* Pagination */}
               <div className="flex items-center justify-between mt-4">
-                <p className="text-sm text-muted-foreground">
-                  Page {currentPage} of {totalPages || 1}
-                </p>
+                <p className="text-sm text-muted-foreground">Page {currentPage} of {totalPages || 1}</p>
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline" size="sm"
+                  <Button variant="outline" size="sm"
                     onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1 || loading}
-                  >
+                    disabled={currentPage === 1 || loading}>
                     Previous
                   </Button>
-                  <Button
-                    variant="outline" size="sm"
+                  <Button variant="outline" size="sm"
                     onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage >= totalPages || loading}
-                  >
+                    disabled={currentPage >= totalPages || loading}>
                     Next
                   </Button>
                 </div>
