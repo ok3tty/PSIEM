@@ -1,41 +1,43 @@
 import { useState } from "react";
+import { Key, Trash2, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const Security = () => {
   const { changePassword } = useAuth();
-
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
+  const [passwordMessage, setPasswordMessage] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
 
-  const handlePasswordChange = async () => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!currentPassword || !newPassword || !confirmPassword) {
-      alert("Please fill in all password fields.");
+      setPasswordMessage("Please fill in all password fields.");
       return;
     }
-
     if (newPassword !== confirmPassword) {
-      alert("New passwords do not match.");
+      setPasswordMessage("New passwords do not match.");
       return;
     }
-
     if (newPassword.length < 8) {
-      alert("New password must be at least 8 characters.");
+      setPasswordMessage("New password must be at least 8 characters.");
       return;
     }
-
     try {
       await changePassword(newPassword);
-      alert("Password updated successfully.");
-
+      setPasswordMessage("Password updated successfully!");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to update password.");
+      setPasswordMessage(error instanceof Error ? error.message : "Failed to update password.");
     }
+    setTimeout(() => setPasswordMessage(""), 4000);
   };
 
   const handleDeleteAccount = () => {
@@ -43,82 +45,117 @@ const Security = () => {
       alert('Type "DELETE" to confirm account deletion.');
       return;
     }
-
     alert("Account deletion feature coming soon.");
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-6">
-      <div className="max-w-3xl mx-auto space-y-8">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div>
+        <h1 className="text-3xl font-bold">Security Preferences</h1>
+        <p className="text-muted-foreground mt-1">Manage your password and account security</p>
+      </div>
 
-        <div>
-          <h1 className="text-3xl font-bold">Security Preferences</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage your password and account security.
-          </p>
-        </div>
+      {/* Change Password */}
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Key className="w-5 h-5" />
+            Change Password
+          </CardTitle>
+          <CardDescription>Update your password to keep your account secure</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            <div>
+              <Label htmlFor="current-password">Current Password</Label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="mt-1"
+                placeholder="Enter current password"
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-password">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="mt-1"
+                placeholder="Enter new password"
+              />
+            </div>
+            <div>
+              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="mt-1"
+                placeholder="Confirm new password"
+              />
+            </div>
+            {passwordMessage && (
+              <p className={`text-sm ${passwordMessage.includes('success') ? 'text-green-500' : 'text-destructive'}`}>
+                {passwordMessage}
+              </p>
+            )}
+            <Button type="submit" className="w-full sm:w-auto">
+              Update Password
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-        {/* Change Password */}
-        <div className="border rounded-xl p-6 space-y-4">
-          <h2 className="text-xl font-semibold">Change Password</h2>
+      {/* Security Tips */}
+      <Card className="glass-card border-primary/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-primary" />
+            Security Tips
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>• Use a strong password with at least 12 characters</p>
+          <p>• Include uppercase, lowercase, numbers and symbols</p>
+          <p>• Never reuse passwords across different services</p>
+          <p>• Enable two-factor authentication for extra security</p>
+        </CardContent>
+      </Card>
 
-          <input
-            type="password"
-            placeholder="Current Password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            className="w-full rounded-lg border px-4 py-3 bg-background"
-          />
-
-          <input
-            type="password"
-            placeholder="New Password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            className="w-full rounded-lg border px-4 py-3 bg-background"
-          />
-
-          <input
-            type="password"
-            placeholder="Confirm New Password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full rounded-lg border px-4 py-3 bg-background"
-          />
-
-          <button
-            onClick={handlePasswordChange}
-            className="px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white"
-          >
-            Update Password
-          </button>
-        </div>
-
-        {/* Delete Account */}
-        <div className="border border-red-500 rounded-xl p-6 space-y-4">
-          <h2 className="text-xl font-semibold text-red-500">Delete Account</h2>
-
+      {/* Delete Account */}
+      <Card className="glass-card border-destructive/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <Trash2 className="w-5 h-5" />
+            Delete Account
+          </CardTitle>
+          <CardDescription>This action is permanent and cannot be undone</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            This action is permanent. Type DELETE to confirm.
+            Deleting your account will remove all your data permanently. Type <span className="font-mono font-bold text-destructive">DELETE</span> to confirm.
           </p>
-
-          <input
+          <Input
             type="text"
             placeholder='Type "DELETE" here'
             value={deleteConfirm}
             onChange={(e) => setDeleteConfirm(e.target.value)}
-            className="w-full rounded-lg border px-4 py-3 bg-background"
+            className="border-destructive/50 focus-visible:ring-destructive/50"
           />
-
-          <button
+          <Button
+            variant="destructive"
             onClick={handleDeleteAccount}
-            className="px-6 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white"
+            disabled={deleteConfirm !== "DELETE"}
           >
             Delete My Account
-          </button>
-        </div>
-
-      </div>
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 };
