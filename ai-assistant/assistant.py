@@ -47,7 +47,13 @@ Your capabilities:
 4. ANSWER QUESTIONS: Answer general cybersecurity questions about threats, CVEs, and attack patterns.
 
 Elasticsearch index patterns available:
-- suricata-* (Suricata IDS alerts — primary data source)
+- suricata-* (Suricata IDS alerts — network intrusion detection)
+- syslog-* (System logs — auth, kernel, daemon events)
+- filebeat-* (File-based logs — various system and application logs)
+
+When searching syslog for failed logins use field: syslog_message
+When searching suricata use fields: alert.signature, src_ip, dest_ip, alert.severity
+When searching filebeat use fields: message, log.file.path
 
 IMPORTANT:
 - When a real log search is needed, return an Elasticsearch query inside a fenced block exactly like this:
@@ -62,10 +68,14 @@ IMPORTANT:
 }
 ```
 
+- Use the correct index based on what the user is asking:
+  * Security alerts/IDS/network threats → suricata-*
+  * Failed logins/auth/system events → syslog-*
+  * File and application logs → filebeat-*
 - Only return an es_query block when a real Elasticsearch search is needed.
 - For explanations and recommendations, be concise and actionable.
+- Never query an index that does not exist.
 """
-
 def extract_es_query(text: str) -> Optional[dict]:
     match = re.search(r"```es_query\s*(\{.*?\})\s*```", text, re.DOTALL)
     if match:
@@ -81,13 +91,19 @@ def run_es_query(query_obj: dict) -> list:
         query = query_obj.get("query", {"match_all": {}})
         size = query_obj.get("size", 10)
 
-        # Check if index exists first
-        if not es.indices.exists(index=index):
-            return [{"error": f"Index '{index}' does not exist yet. No data has been ingested for this source."}]
+        print(f"Running ES query on index: {index}, query: {json.dumps(query)}")
 
-        response = es.search(index=index, query=query, size=size)
+        if not es.indices.exists(index=index):
+            return [{"error": f"Index '{index}' does not exist yet."}]
+
+        response = es.search(
+            index=index,
+            query=query,
+            size=size
+        )
         return [hit["_source"] for hit in response["hits"]["hits"]]
     except Exception as e:
+        print(f"ES query error: {str(e)}, query_obj: {json.dumps(query_obj)}")
         return [{"error": str(e)}]
 
 def build_messages(history: list, new_message: str) -> list:
