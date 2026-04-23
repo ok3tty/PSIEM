@@ -26,17 +26,17 @@ async function fetchFromES(path: string, body: object) {
 
 function getSeverityFromPriority(p: number): string {
   if (p === 1) return 'critical';
-  if (p === 2) return 'error';
-  if (p === 3) return 'warning';
-  return 'info';
+  if (p === 2) return 'high';
+  if (p === 3) return 'medium';
+  return 'low';
 }
 
 function getLogLevelColor(level: string) {
   switch (level) {
     case 'critical': return 'bg-destructive text-destructive-foreground';
-    case 'error':    return 'bg-destructive/70 text-destructive-foreground';
-    case 'warning':  return 'bg-warning text-warning-foreground';
-    case 'info':     return 'bg-info text-info-foreground';
+    case 'high':     return 'bg-warning text-warning-foreground';
+    case 'medium':   return 'bg-info text-info-foreground';
+    case 'low':      return 'bg-success text-success-foreground';
     default:         return 'bg-muted text-muted-foreground';
   }
 }
@@ -53,14 +53,12 @@ interface LogEntry {
   raw: any;
 }
 
-// Collapsible JSON block for large objects
 function JsonBlock({ value }: { value: any }) {
   const [collapsed, setCollapsed] = useState(true);
   const isObject = typeof value === 'object' && value !== null;
   const preview = isObject
     ? `{ ${Object.keys(value).slice(0, 3).join(', ')}${Object.keys(value).length > 3 ? ', ...' : ''} }`
     : String(value ?? '—');
-
   if (!isObject) {
     return (
       <span className="font-mono text-xs bg-muted/40 px-2 py-1 rounded break-all block">
@@ -68,7 +66,6 @@ function JsonBlock({ value }: { value: any }) {
       </span>
     );
   }
-
   return (
     <div className="font-mono text-xs rounded overflow-hidden border border-border/50">
       <button
@@ -89,21 +86,16 @@ function JsonBlock({ value }: { value: any }) {
   );
 }
 
-// Priority fields shown at top of modal
 const PRIORITY_FIELDS = ['@timestamp', 'timestamp', 'alert', 'src_ip', 'dest_ip', 'proto', 'src_port', 'dest_port', 'icmp_type', 'icmp_code', 'flow'];
-// Fields to hide (noisy / not useful)
 const HIDDEN_FIELDS = ['log_type', '@version', 'ecs', 'tags', 'log'];
 
 function DetailModal({ log, onClose }: { log: LogEntry; onClose: () => void }) {
   const raw = log.raw || {};
-
   const priorityEntries = PRIORITY_FIELDS
     .filter(k => k in raw && !HIDDEN_FIELDS.includes(k))
     .map(k => [k, raw[k]] as [string, any]);
-
   const otherEntries = Object.entries(raw)
     .filter(([k]) => !PRIORITY_FIELDS.includes(k) && !HIDDEN_FIELDS.includes(k));
-
   const renderField = (key: string, value: any) => (
     <div key={key} className="grid grid-cols-3 gap-3 text-sm items-start">
       <span className="text-muted-foreground font-medium col-span-1 pt-1 break-all">{key}</span>
@@ -112,14 +104,9 @@ function DetailModal({ log, onClose }: { log: LogEntry; onClose: () => void }) {
       </div>
     </div>
   );
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-visibile mx-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
+      <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-visible mx-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-3">
             <Database className="h-4 w-4 text-primary" />
@@ -130,11 +117,8 @@ function DetailModal({ log, onClose }: { log: LogEntry; onClose: () => void }) {
             <X className="h-4 w-4" />
           </button>
         </div>
-
         <ScrollArea className="h-[65vh] overflow-y-auto">
           <div className="p-5 space-y-4">
-
-            {/* Summary row */}
             <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-muted/30 border border-border/50 text-sm">
               <div>
                 <p className="text-muted-foreground text-xs mb-1">Timestamp</p>
@@ -161,8 +145,6 @@ function DetailModal({ log, onClose }: { log: LogEntry; onClose: () => void }) {
                 <p className="font-mono text-xs">{log.sourceSystem}</p>
               </div>
             </div>
-
-            {/* Priority fields */}
             {priorityEntries.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Event Fields</p>
@@ -171,8 +153,6 @@ function DetailModal({ log, onClose }: { log: LogEntry; onClose: () => void }) {
                 </div>
               </div>
             )}
-
-            {/* Other fields */}
             {otherEntries.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Additional Fields</p>
@@ -181,7 +161,6 @@ function DetailModal({ log, onClose }: { log: LogEntry; onClose: () => void }) {
                 </div>
               </div>
             )}
-
           </div>
         </ScrollArea>
       </div>
@@ -198,25 +177,34 @@ export default function EventLogs() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('all');
-  const [selectedSource, setSelectedSource] = useState('all');
+  const [selectedProto, setSelectedProto] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
-  const [selectedProto, setSelectedProto] = useState('all');
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const must: any[] = [{ exists: { field: 'alert.signature' } }];
+
+      // Level filter — map display names to Suricata severity numbers
       if (selectedLevel !== 'all') {
-        const levelMap: Record<string, number> = { critical: 1, error: 2, warning: 3, info: 4 };
+        const levelMap: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4 };
         if (levelMap[selectedLevel]) {
           must.push({ term: { 'alert.severity': levelMap[selectedLevel] } });
         }
       }
-      if (selectedSource !== 'all') {
-        must.push({ term: { 'alert.category.keyword': selectedSource } });
+
+      // Protocol filter
+      if (selectedProto === 'ipv4') {
+        must.push({ term: { 'network.type': 'ipv4' } });
+      } else if (selectedProto === 'ipv6') {
+        must.push({ term: { 'network.type': 'ipv6' } });
+      } else if (['tcp', 'udp', 'icmp'].includes(selectedProto)) {
+        must.push({ term: { proto: selectedProto } });
       }
+
+      // Search query
       if (searchQuery.trim()) {
         must.push({
           multi_match: {
@@ -224,20 +212,15 @@ export default function EventLogs() {
             fields: ['alert.signature', 'alert.category', 'src_ip', 'dest_ip', 'proto'],
           },
         });
-      if (selectedProto === 'ipv4') {
-        must.push({ term: { 'network.type': 'ipv4' } });
-      } else if (selectedProto === 'ipv6') {
-        must.push({ term: { 'network.type': 'ipv6' } });
-      } else if (['tcp', 'udp', 'icmp'].includes(selectedProto)) {
-        must.push({ term: { 'proto': selectedProto } });
       }
-      }
+
       const res = await fetchFromES('/suricata-*/_search', {
         size: PAGE_SIZE,
         from: (currentPage - 1) * PAGE_SIZE,
         sort: [{ '@timestamp': { order: 'desc' } }],
         query: { bool: { must } },
       });
+
       const hits = res.hits?.hits || [];
       setTotal(res.hits?.total?.value || 0);
       setLogs(hits.map((h: any) => ({
@@ -256,16 +239,16 @@ export default function EventLogs() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedLevel, selectedSource,selectedProto, currentPage]);
+  }, [searchQuery, selectedLevel, selectedProto, currentPage]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, selectedLevel, selectedSource, selectedProto]);
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, selectedLevel, selectedProto]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const handleExport = () => {
     const csv = [
-      ['Timestamp', 'Level', 'Source', 'Protocol', 'Message', 'Source IP', 'Dest IP'].join(','),
+      ['Timestamp', 'Level', 'Category', 'Protocol', 'Signature', 'Source IP', 'Dest IP'].join(','),
       ...logs.map(l => [
         l.timestamp.toISOString(), l.logLevel, l.sourceSystem, l.eventType,
         `"${l.message.replace(/"/g, '""')}"`, l.ipAddress, l.destIp,
@@ -340,23 +323,23 @@ export default function EventLogs() {
               <SelectContent>
                 <SelectItem value="all">All Levels</SelectItem>
                 <SelectItem value="critical">Critical</SelectItem>
-                <SelectItem value="error">High</SelectItem>
-                <SelectItem value="warning">Medium</SelectItem>
-                <SelectItem value="info">Low</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
               </SelectContent>
             </Select>
             <Select value={selectedProto} onValueChange={setSelectedProto}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Protocol" />
-               </SelectTrigger>
-               <SelectContent>
-                 <SelectItem value="all">All Protocols</SelectItem>
-                 <SelectItem value="ipv4">IPv4 Only</SelectItem>
-                 <SelectItem value="ipv6">IPv6 Only</SelectItem>
-                 <SelectItem value="tcp">TCP</SelectItem>
-                 <SelectItem value="udp">UDP</SelectItem>
-                 <SelectItem value="icmp">ICMP</SelectItem>
-               </SelectContent>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Protocols</SelectItem>
+                <SelectItem value="ipv4">IPv4 Only</SelectItem>
+                <SelectItem value="ipv6">IPv6 Only</SelectItem>
+                <SelectItem value="tcp">TCP</SelectItem>
+                <SelectItem value="udp">UDP</SelectItem>
+                <SelectItem value="icmp">ICMP</SelectItem>
+              </SelectContent>
             </Select>
             <Button variant="outline" size="icon" onClick={fetchLogs}>
               <Filter className="w-4 h-4" />

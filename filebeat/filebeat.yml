@@ -10,9 +10,23 @@ filebeat.inputs:
       service: ids
     fields_under_root: true
 
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/zeek/live/conn.log
+      - /var/log/zeek/live/dns.log
+      - /var/log/zeek/live/http.log
+      - /var/log/zeek/live/ssh.log
+      - /var/log/zeek/live/notice.log
+    json.keys_under_root: true
+    json.add_error_key: true
+    fields:
+      log_type: zeek
+      service: zeek
+    fields_under_root: true
+
 output.logstash:
   hosts: ["logstash:5044"]
-
 logging.level: info
 logging.to_files: true
 logging.files:
