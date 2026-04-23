@@ -64,17 +64,15 @@ services:
   ids:
     build: ./ids
     container_name: psiem_ids
+    network_mode: host
     volumes:
       - ./ids/rules:/etc/suricata/rules
+      - ./ids/suricata.yaml:/etc/suricata/suricata.yaml:ro
       - ./logs/suricata:/var/log/suricata
-      - ./logs/zeek/spool/zeek:/var/log/zeek/live
-    depends_on:
-      - elasticsearch
-    networks:
-      - psiem-net
     cap_add:
       - NET_ADMIN
       - NET_RAW
+    restart: unless-stopped
 
   zeek:
     image: zeek/zeek:6.0
