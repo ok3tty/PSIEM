@@ -19,7 +19,7 @@ import NotFound from "./pages/NotFound";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import Support from "./pages/Support";
 import Security from "./pages/Security";
-
+import MitreAttack from "./pages/MitreAttack";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -68,6 +68,7 @@ const App = () => {
                 <Route path="/settings" element={<Settings />} />
 		<Route path="/security" element={<Security />} />
 		<Route path="/support" element={<Support />} />
+                <Route path="/mitre-attack" element={<MitreAttack />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

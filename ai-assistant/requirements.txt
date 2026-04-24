@@ -1,6 +1,7 @@
 fastapi
 uvicorn
-elasticsearch==8.10.1
+httpx
 groq
 python-dotenv
+elasticsearch
 pydantic

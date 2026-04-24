@@ -1,0 +1,38 @@
+Replace the VirusTotalPanel function (around line 91) with this:
+
+function VirusTotalPanel({ ip }: { ip: string }) {
+  const [result, setResult] = useState<VTResult | null>(null);
+
+  const lookup = async () => {
+    if (!ip || ip === 'N/A' || ip.startsWith('fe80') || ip.startsWith('10.') || ip.startsWith('172.') || ip.startsWith('192.168.')) {
+      setResult({ loading: false, error: 'Private/local IP — VirusTotal lookup not applicable.' });
+      return;
+    }
+    setResult({ loading: true });
+    try {
+      // Use backend proxy instead of direct VT API call
+      const res = await fetch(`http://localhost:8000/virustotal/${ip}`);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || `API error: ${res.status}`);
+      }
+      const data = await res.json();
+      setResult({
+        loading: false,
+        malicious: data.malicious || 0,
+        suspicious: data.suspicious || 0,
+        harmless: data.harmless || 0,
+        undetected: data.undetected || 0,
+        country: data.country,
+        owner: data.owner,
+        reputation: data.reputation,
+        lastAnalysis: data.lastAnalysis 
+          ? new Date(data.lastAnalysis * 1000).toLocaleDateString()
+          : undefined,
+      });
+    } catch (e: any) {
+      setResult({ loading: false, error: e.message || 'Lookup failed' });
+    }
+  };
+
+  // ... rest of the function stays the same

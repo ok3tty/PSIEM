@@ -8,6 +8,7 @@ from groq import Groq
 import os
 import json
 import re
+import httpx
 
 load_dotenv(dotenv_path="../.env")
 
@@ -24,6 +25,7 @@ app.add_middleware(
 ES_HOST = os.getenv("ELASTICSEARCH_HOST", "http://psiem_elasticsearch:9200")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+VT_API_KEY = os.getenv("VITE_VIRUSTOTAL_API_KEY")
 
 es = Elasticsearch(ES_HOST)
 client = Groq(api_key=GROQ_API_KEY)
@@ -129,6 +131,44 @@ def health_check():
         "ai_model": GROQ_MODEL,
         "groq_key_configured": bool(GROQ_API_KEY),
     }
+
+@app.get("/virustotal/{ip}")
+async def virustotal_lookup(ip: str):
+    """Proxy VirusTotal API requests to avoid CORS issues"""
+    if not VT_API_KEY:
+        raise HTTPException(status_code=500, detail="VirusTotal API key not configured")
+    
+    url = f"https://www.virustotal.com/api/v3/ip_addresses/{ip}"
+    headers = {"x-apikey": VT_API_KEY}
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers, timeout=10.0)
+            
+            if response.status_code == 200:
+                data = response.json()
+                attrs = data.get("data", {}).get("attributes", {})
+                stats = attrs.get("last_analysis_stats", {})
+                
+                return {
+                    "malicious": stats.get("malicious", 0),
+                    "suspicious": stats.get("suspicious", 0),
+                    "harmless": stats.get("harmless", 0),
+                    "undetected": stats.get("undetected", 0),
+                    "country": attrs.get("country"),
+                    "owner": attrs.get("as_owner"),
+                    "reputation": attrs.get("reputation"),
+                    "lastAnalysis": attrs.get("last_analysis_date"),
+                }
+            elif response.status_code == 404:
+                raise HTTPException(status_code=404, detail="IP not found in VirusTotal")
+            else:
+                raise HTTPException(status_code=response.status_code, detail="VirusTotal API error")
+                
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="VirusTotal request timed out")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error contacting VirusTotal: {str(e)}")
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):

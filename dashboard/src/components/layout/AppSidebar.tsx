@@ -35,6 +35,7 @@ const menuItems = [
   { title: 'AI Assistant', url: '/ai-assistant', icon: Bot },
   { title: 'System Health', url: '/system-health', icon: Activity },
   { title: 'Settings', url: '/settings', icon: Settings },
+  { title: 'MITRE ATT&CK', url: '/mitre-attack', icon: Shield },
 ];
 
 export const AppSidebar = () => {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Download, Filter, Database, RefreshCw, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, Download, Filter, Database, RefreshCw, X, ChevronDown, ChevronRight, ExternalLink, Shield } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,19 @@ function getLogLevelColor(level: string) {
     case 'low':      return 'bg-success text-success-foreground';
     default:         return 'bg-muted text-muted-foreground';
   }
+}
+
+interface VTResult {
+  loading: boolean;
+  error?: string;
+  malicious?: number;
+  suspicious?: number;
+  harmless?: number;
+  undetected?: number;
+  country?: string;
+  owner?: string;
+  reputation?: number;
+  lastAnalysis?: string;
 }
 
 interface LogEntry {
@@ -81,6 +94,113 @@ function JsonBlock({ value }: { value: any }) {
         <pre className="p-3 bg-background/60 text-foreground/80 overflow-x-auto text-xs leading-relaxed whitespace-pre-wrap break-all">
           {JSON.stringify(value, null, 2)}
         </pre>
+      )}
+    </div>
+  );
+}
+
+function VirusTotalPanel({ ip }: { ip: string }) {
+  const [result, setResult] = useState<VTResult | null>(null);
+
+  const lookup = async () => {
+    if (!ip || ip === 'N/A' || ip.startsWith('fe80') || ip.startsWith('10.') || ip.startsWith('172.') || ip.startsWith('192.168.')) {
+      setResult({ loading: false, error: 'Private/local IP — VirusTotal lookup not applicable.' });
+      return;
+    }
+    setResult({ loading: true });
+    try {
+      const res = await fetch(`https://myaegis.org/virustotal/${ip}`);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || `API error: ${res.status}`);
+      }
+      const data = await res.json();
+      setResult({
+        loading: false,
+        malicious: data.malicious || 0,
+        suspicious: data.suspicious || 0,
+        harmless: data.harmless || 0,
+        undetected: data.undetected || 0,
+        country: data.country,
+        owner: data.owner,
+        reputation: data.reputation,
+        lastAnalysis: data.lastAnalysis
+          ? new Date(data.lastAnalysis * 1000).toLocaleDateString()
+          : undefined,
+      });
+    } catch (e: any) {
+      setResult({ loading: false, error: e.message || 'Lookup failed' });
+    }
+  };
+
+  if (!result) {
+    return (
+      <Button size="sm" variant="outline" onClick={lookup} className="gap-1.5 text-xs h-7">
+        <Shield className="h-3 w-3" />
+        VirusTotal Lookup
+      </Button>
+    );
+  }
+
+  if (result.loading) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <RefreshCw className="h-3 w-3 animate-spin" />
+        Looking up {ip}...
+      </div>
+    );
+  }
+
+  if (result.error) {
+    return <p className="text-xs text-muted-foreground">{result.error}</p>;
+  }
+
+  const isMalicious = (result.malicious || 0) > 0;
+  const isSuspicious = (result.suspicious || 0) > 0;
+
+  return (
+    <div className="mt-2 p-3 rounded-lg border border-border bg-background/50 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Shield className={`h-4 w-4 ${isMalicious ? 'text-destructive' : isSuspicious ? 'text-warning' : 'text-success'}`} />
+          <span className="text-xs font-semibold">
+            {isMalicious ? '⚠️ Malicious IP' : isSuspicious ? '⚠️ Suspicious IP' : '✅ Clean IP'}
+          </span>
+        </div>
+        <a
+          href={`https://www.virustotal.com/gui/ip-address/${ip}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-primary hover:underline flex items-center gap-1"
+        >
+          View on VT <ExternalLink className="h-3 w-3" />
+        </a>
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="flex items-center gap-1">
+          <span className="text-destructive font-bold">{result.malicious}</span>
+          <span className="text-muted-foreground">malicious</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-warning font-bold">{result.suspicious}</span>
+          <span className="text-muted-foreground">suspicious</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-success font-bold">{result.harmless}</span>
+          <span className="text-muted-foreground">harmless</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="text-muted-foreground font-bold">{result.undetected}</span>
+          <span className="text-muted-foreground">undetected</span>
+        </div>
+      </div>
+      {(result.country || result.owner) && (
+        <div className="text-xs text-muted-foreground border-t border-border/50 pt-2 space-y-1">
+          {result.country && <p>🌍 Country: <span className="text-foreground">{result.country}</span></p>}
+          {result.owner && <p>🏢 Owner: <span className="text-foreground">{result.owner}</span></p>}
+          {result.reputation !== undefined && <p>📊 Reputation: <span className={result.reputation < 0 ? 'text-destructive' : 'text-success'}>{result.reputation}</span></p>}
+          {result.lastAnalysis && <p>🕐 Last analysis: <span className="text-foreground">{result.lastAnalysis}</span></p>}
+        </div>
       )}
     </div>
   );
@@ -145,6 +265,23 @@ function DetailModal({ log, onClose }: { log: LogEntry; onClose: () => void }) {
                 <p className="font-mono text-xs">{log.sourceSystem}</p>
               </div>
             </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Threat Intelligence</p>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Source IP — {log.ipAddress}</p>
+                  <VirusTotalPanel ip={log.ipAddress} />
+                </div>
+                {log.destIp && log.destIp !== log.ipAddress && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Dest IP — {log.destIp}</p>
+                    <VirusTotalPanel ip={log.destIp} />
+                  </div>
+                )}
+              </div>
+            </div>
+
             {priorityEntries.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Event Fields</p>
@@ -153,6 +290,7 @@ function DetailModal({ log, onClose }: { log: LogEntry; onClose: () => void }) {
                 </div>
               </div>
             )}
+
             {otherEntries.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Additional Fields</p>
@@ -186,16 +324,12 @@ export default function EventLogs() {
     setError(null);
     try {
       const must: any[] = [{ exists: { field: 'alert.signature' } }];
-
-      // Level filter — map display names to Suricata severity numbers
       if (selectedLevel !== 'all') {
         const levelMap: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4 };
         if (levelMap[selectedLevel]) {
           must.push({ term: { 'alert.severity': levelMap[selectedLevel] } });
         }
       }
-
-      // Protocol filter
       if (selectedProto === 'ipv4') {
         must.push({ term: { 'network.type': 'ipv4' } });
       } else if (selectedProto === 'ipv6') {
@@ -203,8 +337,6 @@ export default function EventLogs() {
       } else if (['tcp', 'udp', 'icmp'].includes(selectedProto)) {
         must.push({ term: { proto: selectedProto } });
       }
-
-      // Search query
       if (searchQuery.trim()) {
         must.push({
           multi_match: {
@@ -213,14 +345,12 @@ export default function EventLogs() {
           },
         });
       }
-
       const res = await fetchFromES('/suricata-*/_search', {
         size: PAGE_SIZE,
         from: (currentPage - 1) * PAGE_SIZE,
         sort: [{ '@timestamp': { order: 'desc' } }],
         query: { bool: { must } },
       });
-
       const hits = res.hits?.hits || [];
       setTotal(res.hits?.total?.value || 0);
       setLogs(hits.map((h: any) => ({
