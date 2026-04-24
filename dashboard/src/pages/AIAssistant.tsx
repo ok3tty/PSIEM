@@ -330,8 +330,14 @@ export default function AIAssistant() {
     setIsLoading(true);
 
     const history = messages
-      .filter(m => !m.id.startsWith("welcome"))
-      .map(m => ({ role: m.role, content: m.content }));
+      .filter(m => !m.id.startsWith("welcome") && m.role === "user")
+      .slice(-6)
+      .map(m => ({ 
+        role: m.role, 
+        content: m.role === "assistant"
+          ? m.content.split("\n")[0].slice(0,100)
+          : m.content
+      }));
 
     try {
       const res = await fetch(`${AI_ASSISTANT_URL}/chat`, {

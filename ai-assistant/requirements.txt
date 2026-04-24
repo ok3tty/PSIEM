@@ -3,5 +3,5 @@ uvicorn
 httpx
 groq
 python-dotenv
-elasticsearch
+elasticsearch==8.10.1
 pydantic
