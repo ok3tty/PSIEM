@@ -45,3 +45,21 @@ certbot/
 .env.local
 .env.production
 dashboard/.env.local
+
+# SSL Certificates - NEVER commit these!
+nginx/ssl/*.crt
+nginx/ssl/*.key
+nginx/ssl/*.pem
+dashboard/nginx/ssl/*.crt
+dashboard/nginx/ssl/*.key
+dashboard/nginx/ssl/*.pem
+
+# Environment files
+.env
+
+# Certbot (contains private keys)
+certbot/
+
+# Backup files
+*-backup/
+*.backup
