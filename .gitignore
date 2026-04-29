@@ -41,3 +41,7 @@ certbot/
 *.pem
 *.key
 *.crt
+.env
+.env.local
+.env.production
+dashboard/.env.local
