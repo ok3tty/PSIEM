@@ -230,8 +230,8 @@ bash tests/test1.sh yourdomain.com
 
 ## Blog/Youtube
 
-[Psiem Blog](https://websites.uta.edu/cseseniordesign/2026/05/04/psiem/)
-[PSIEM DEMO](https://youtu.be/1e933lUyYiU?si=tVl3jygP0Du4FmHR)
+1. [Psiem Blog](https://websites.uta.edu/cseseniordesign/2026/05/04/psiem/)
+2. [PSIEM DEMO](https://youtu.be/1e933lUyYiU?si=tVl3jygP0Du4FmHR)
 
 ## Team
 
