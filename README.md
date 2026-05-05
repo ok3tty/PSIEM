@@ -228,11 +228,21 @@ bash tests/test1.sh yourdomain.com
 
 ---
 
+## Blog 
+
+[Psiem Blog](https://websites.uta.edu/cseseniordesign/2026/05/04/psiem/)
+
 ## Team
 
 Built as a capstone security project.
 
 > Add team member names and roles here.
+1. Muhammad Khurram – Computer Science
+2. Ebenezer Belay – Computer Science
+3. Abdulmuizz Wahab – Computer Science
+4. Kevin Farokhrouz – Computer Science
+5. Farrukh Hayat – Computer Science
+6. Jocelyn Bui – Computer Science
 
 ---
 
